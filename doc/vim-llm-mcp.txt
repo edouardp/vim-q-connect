@@ -1,0 +1,64 @@
+*vim-llm-mcp.txt*	Vim plugin for LLM context via Model Context Protocol
+
+Author: Your Name
+License: Same terms as Vim itself (see |license|)
+
+INTRODUCTION					*vim-llm-mcp*
+
+This plugin provides editor context to LLM tools via Model Context Protocol
+(MCP). It tracks your cursor position and current line, sending context
+updates via Unix socket to an MCP server.
+
+REQUIREMENTS					*vim-llm-mcp-requirements*
+
+- `netcat` (for socket communication)
+
+COMMANDS					*vim-llm-mcp-commands*
+
+:QConnect					*:QConnect*
+		Start tracking editor context and connect to MCP server.
+
+:QConnect!					*:QConnect!*
+		Stop tracking editor context and disconnect from MCP server.
+
+CONFIGURATION					*vim-llm-mcp-configuration*
+
+g:vim_llm_mcp_auto_start			*g:vim_llm_mcp_auto_start*
+		Enable automatic start of context tracking when Vim starts.
+		Default: 1 (enabled)
+>
+		let g:vim_llm_mcp_auto_start = 0
+<
+
+g:vim_llm_mcp_socket_path			*g:vim_llm_mcp_socket_path*
+		Custom socket path for MCP communication.
+		Default: plugin directory + '/.vim-q-mcp.sock'
+>
+		let g:vim_llm_mcp_socket_path = '/path/to/custom.sock'
+<
+
+USAGE						*vim-llm-mcp-usage*
+
+The plugin automatically starts tracking editor context when Vim starts
+(if g:vim_llm_mcp_auto_start is enabled). It sends context updates to an
+MCP server via Unix socket.
+
+To manually control the connection:
+>
+	:QConnect		" Start tracking
+	:QConnect!		" Stop tracking
+<
+
+MCP SERVER					*vim-llm-mcp-server*
+
+Start the MCP server separately:
+>
+	cd ~/.vim/plugged/vim-llm-mcp
+	uv sync
+	./run-mcp.sh
+<
+
+The MCP server provides `get_editor_context` and `goto_line` tools to
+LLM clients like Q CLI.
+
+vim:tw=78:ts=8:ft=help:norl:
