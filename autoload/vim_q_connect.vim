@@ -64,18 +64,22 @@ function! StartMCPServer()
     return
   endif
   
-  let g:mcp_channel = ch_open('unix:' . g:vim_q_connect_socket_path, {
-    \ 'mode': 'json',
-    \ 'callback': 'HandleMCPMessage',
-    \ 'close_cb': 'OnMCPClose'
-  \ })
-  
-  if ch_status(g:mcp_channel) == 'open'
-    echo "Q MCP channel connected"
-  else
-    echo "Failed to connect Q MCP channel: " . ch_status(g:mcp_channel)
+  try
+    let g:mcp_channel = ch_open('unix:' . g:vim_q_connect_socket_path, {
+      \ 'mode': 'json',
+      \ 'callback': 'HandleMCPMessage',
+      \ 'close_cb': 'OnMCPClose'
+    \ })
+    
+    if ch_status(g:mcp_channel) == 'open'
+      echo "Q MCP channel connected"
+    else
+      let g:mcp_channel = v:null
+    endif
+  catch
+    " MCP server not running - that's OK, Q CLI will start it
     let g:mcp_channel = v:null
-  endif
+  endtry
 endfunction
 
 function! OnMCPClose(channel)

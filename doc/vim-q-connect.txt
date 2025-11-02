@@ -1,0 +1,48 @@
+*vim-q-connect.txt*	Vim plugin for Q CLI context via Model Context Protocol
+
+Author: Your Name
+License: Same terms as Vim itself (see |license|)
+
+INTRODUCTION					*vim-q-connect*
+
+This plugin provides editor context to Q CLI via Model Context Protocol
+(MCP). It tracks your cursor position and current line, sending context
+updates via Unix socket to Q CLI's MCP server.
+
+COMMANDS					*vim-q-connect-commands*
+
+:QConnect					*:QConnect*
+		Start tracking editor context and connect to Q CLI's MCP server.
+
+:QConnect!					*:QConnect!*
+		Stop tracking editor context and disconnect from MCP server.
+
+CONFIGURATION					*vim-q-connect-configuration*
+
+g:vim_q_connect_socket_path			*g:vim_q_connect_socket_path*
+		Custom socket path for MCP communication.
+		Default: plugin directory + '/.vim-q-mcp.sock'
+>
+		let g:vim_q_connect_socket_path = '/path/to/custom.sock'
+<
+
+USAGE						*vim-q-connect-usage*
+
+The plugin connects to Q CLI's MCP server on demand. Use :QConnect to start
+tracking editor context.
+
+To control the connection:
+>
+	:QConnect		" Start tracking
+	:QConnect!		" Stop tracking
+<
+
+INTEGRATION					*vim-q-connect-integration*
+
+Q CLI manages the MCP server lifecycle. The plugin only connects to an
+existing server when you run :QConnect.
+
+The MCP server provides `get_editor_context` and `goto_line` tools to
+Q CLI for editor integration.
+
+vim:tw=78:ts=8:ft=help:norl:
