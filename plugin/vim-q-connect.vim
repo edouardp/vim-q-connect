@@ -1,5 +1,5 @@
 " vim-q-connect.vim - Vim plugin for Q CLI context via MCP
-" Maintainer: Your Name
+" Maintainer: Edouard Poor
 
 if exists('g:loaded_vim_q_connect')
   finish

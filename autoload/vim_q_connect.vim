@@ -15,6 +15,8 @@ let g:visual_end = 0          " End line of visual selection (0 = no selection)
 " Handle incoming MCP messages from Q CLI
 " Currently supports 'goto_line' method for navigation commands
 function! HandleMCPMessage(channel, msg)
+  echo "DEBUG: Received MCP message: " . string(a:msg)
+  
   " Handle both raw JSON strings and pre-decoded objects
   if type(a:msg) == type('')
     let data = json_decode(a:msg)
@@ -22,9 +24,14 @@ function! HandleMCPMessage(channel, msg)
     let data = a:msg
   endif
   
+  echo "DEBUG: Parsed data: " . string(data)
+  
   if data.method == 'goto_line'
+    echo "DEBUG: Processing goto_line command"
     let line_num = data.params.line
     let filename = get(data.params, 'filename', '')
+    
+    echo "DEBUG: Going to line " . line_num . " in file '" . filename . "'"
     
     " Switch to specified file if provided
     if filename != ''
@@ -33,6 +40,10 @@ function! HandleMCPMessage(channel, msg)
     " Jump to line and center it in viewport
     execute line_num
     normal! zz
+    
+    echo "DEBUG: Navigation completed"
+  else
+    echo "DEBUG: Unknown method: " . get(data, 'method', 'no method')
   endif
 endfunction
 
