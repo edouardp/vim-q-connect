@@ -75,10 +75,11 @@ function! StartMCPServer()
       echo "Q MCP channel connected"
     else
       let g:mcp_channel = v:null
+      echohl WarningMsg | echo "Warning: Cannot connect to Q CLI MCP server. Make sure Q CLI is running." | echohl None
     endif
   catch
-    " MCP server not running - that's OK, Q CLI will start it
     let g:mcp_channel = v:null
+    echohl WarningMsg | echo "Warning: Cannot connect to Q CLI MCP server. Make sure Q CLI is running." | echohl None
   endtry
 endfunction
 
