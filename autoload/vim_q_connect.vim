@@ -17,8 +17,8 @@ let g:visual_end = 0          " End line of visual selection (0 = no selection)
 function! HandleMCPMessage(channel, msg)
   echo "DEBUG: Received MCP message: " . string(a:msg)
   
-  " In JSON mode, Vim automatically decodes the message
-  let data = a:msg
+  " In nl mode, messages are strings - parse JSON
+  let data = json_decode(a:msg)
   
   echo "DEBUG: Parsed data: " . string(data)
   
@@ -97,9 +97,9 @@ function! StartMCPServer()
   endif
   
   try
-    " Open JSON-mode channel with message callback
+    " Open nl-mode channel with message callback
     let g:mcp_channel = ch_open('unix:' . g:vim_q_connect_socket_path, {
-      \ 'mode': 'json',
+      \ 'mode': 'nl',
       \ 'callback': 'HandleMCPMessage',
       \ 'close_cb': 'OnMCPClose'
     \ })
