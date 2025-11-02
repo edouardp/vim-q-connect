@@ -17,12 +17,8 @@ let g:visual_end = 0          " End line of visual selection (0 = no selection)
 function! HandleMCPMessage(channel, msg)
   echo "DEBUG: Received MCP message: " . string(a:msg)
   
-  " Handle both raw JSON strings and pre-decoded objects
-  if type(a:msg) == type('')
-    let data = json_decode(a:msg)
-  else
-    let data = a:msg
-  endif
+  " In JSON mode, Vim automatically decodes the message
+  let data = a:msg
   
   echo "DEBUG: Parsed data: " . string(data)
   
