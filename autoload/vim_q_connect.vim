@@ -1,4 +1,4 @@
-" Autoload functions for vim-llm-mcp
+" Autoload functions for vim-q-connect
 
 let g:context_active = 0
 let g:mcp_channel = v:null
@@ -64,7 +64,7 @@ function! StartMCPServer()
     return
   endif
   
-  let g:mcp_channel = ch_open('unix:' . g:vim_llm_mcp_socket_path, {
+  let g:mcp_channel = ch_open('unix:' . g:vim_q_connect_socket_path, {
     \ 'mode': 'json',
     \ 'callback': 'HandleMCPMessage',
     \ 'close_cb': 'OnMCPClose'
@@ -83,7 +83,7 @@ function! OnMCPClose(channel)
   let g:mcp_channel = v:null
 endfunction
 
-function! vim_llm_mcp#start_tracking()
+function! vim_q_connect#start_tracking()
   let g:context_active = 1
   call StartMCPServer()
   call WriteContext()
@@ -95,7 +95,7 @@ function! vim_llm_mcp#start_tracking()
   augroup END
 endfunction
 
-function! vim_llm_mcp#stop_tracking()
+function! vim_q_connect#stop_tracking()
   if g:mcp_channel != v:null
     let disconnect_msg = {"method": "disconnect", "params": {}}
     try
