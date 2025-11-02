@@ -16,9 +16,9 @@ if !exists('g:vim_llm_mcp_auto_start')
 endif
 
 " Commands
-command! -bang QConnect if <bang>0 | call vim_llm_mcp#stop_tracking() | else | call vim_llm_mcp#start_tracking() | endif
+command! -bang QConnect if <bang>0 | call vim_q_connect#stop_tracking() | else | call vim_q_connect#start_tracking() | endif
 
 " Auto-start context tracking if enabled
 if g:vim_llm_mcp_auto_start
-  autocmd VimEnter * call vim_llm_mcp#start_tracking()
+  autocmd VimEnter * call vim_q_connect#start_tracking()
 endif
