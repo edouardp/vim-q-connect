@@ -15,32 +15,22 @@ let g:visual_end = 0          " End line of visual selection (0 = no selection)
 " Handle incoming MCP messages from Q CLI
 " Currently supports 'goto_line' method for navigation commands
 function! HandleMCPMessage(channel, msg)
-  echo "DEBUG: Received MCP message: " . string(a:msg)
-  
-  " In nl mode, messages are strings - parse JSON
   let data = json_decode(a:msg)
   
-  echo "DEBUG: Parsed data: " . string(data)
-  
   if data.method == 'goto_line'
-    echo "DEBUG: Processing goto_line command"
     let line_num = data.params.line
     let filename = get(data.params, 'filename', '')
-    
-    echo "DEBUG: Going to line " . line_num . " in file '" . filename . "'"
-    
-    " Switch to specified file if provided
-    if filename != ''
-      execute 'edit ' . filename
-    endif
-    " Jump to line and center it in viewport
-    execute line_num
-    normal! zz
-    
-    echo "DEBUG: Navigation completed"
-  else
-    echo "DEBUG: Unknown method: " . get(data, 'method', 'no method')
+    call timer_start(0, {-> s:DoGotoLine(line_num, filename)})
   endif
+endfunction
+
+" Navigate to line/file outside callback context
+function! s:DoGotoLine(line_num, filename)
+  if a:filename != ''
+    execute 'edit ' . fnameescape(a:filename)
+  endif
+  execute a:line_num
+  normal! zz
 endfunction
 
 " Send current editor context to Q CLI MCP server
