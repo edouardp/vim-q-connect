@@ -174,7 +174,8 @@ def goto_line(line_number: int, filename: str = "") -> str:
             }
         }
         
-        vim_channel.send((json.dumps(command) + '\n').encode())
+        # Send as raw JSON string since Vim channel is in JSON mode
+        vim_channel.send(json.dumps(command).encode() + b'\n')
         return f"Navigation command sent: line {line_number}" + (f" in {filename}" if filename else "")
     except Exception as e:
         return f"Error sending navigation command: {e}"
