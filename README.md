@@ -31,13 +31,6 @@ The plugin connects to Q CLI's MCP server on demand. Use `:QConnect` to start tr
 - `:QConnect` - Start tracking and send context to Q CLI
 - `:QConnect!` - Stop tracking and disconnect
 
-## Configuration
-
-```vim
-" Custom socket path (default: plugin directory + '/.vim-q-mcp.sock')
-let g:vim_q_connect_socket_path = '/path/to/custom.sock'
-```
-
 ## How it Works
 
 When connected, the plugin:
