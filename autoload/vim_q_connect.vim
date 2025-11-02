@@ -27,7 +27,12 @@ endfunction
 " Navigate to line/file outside callback context
 function! s:DoGotoLine(line_num, filename)
   if a:filename != ''
-    execute 'edit ' . fnameescape(a:filename)
+    let bufnr = bufnr(a:filename)
+    if bufnr == -1
+      execute 'edit ' . fnameescape(a:filename)
+    else
+      execute 'buffer ' . bufnr
+    endif
   endif
   execute a:line_num
   normal! zz
