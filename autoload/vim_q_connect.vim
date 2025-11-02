@@ -26,6 +26,14 @@ endfunction
 
 " Navigate to line/file outside callback context
 function! s:DoGotoLine(line_num, filename)
+  " Find first non-terminal window
+  for i in range(1, winnr('$'))
+    if getwinvar(i, '&buftype') != 'terminal'
+      execute i . 'wincmd w'
+      break
+    endif
+  endfor
+  
   if a:filename != ''
     let bufnr = bufnr(a:filename)
     if bufnr == -1
