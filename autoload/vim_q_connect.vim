@@ -99,6 +99,11 @@ function! StartMCPServer()
     return
   endif
   
+  " Set socket path at connection time if not configured
+  if !exists('g:vim_q_connect_socket_path')
+    let g:vim_q_connect_socket_path = getcwd() . '/.vim-q-mcp.sock'
+  endif
+  
   try
     " Open nl-mode channel with message callback
     let g:mcp_channel = ch_open('unix:' . g:vim_q_connect_socket_path, {
