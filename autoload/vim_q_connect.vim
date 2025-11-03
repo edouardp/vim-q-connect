@@ -177,7 +177,7 @@ function! WriteContext()
   endif
   
   " Update current state
-  let g:current_filename = expand('%:t')
+  let g:current_filename = expand('%:.')
   let g:current_line = line('.')
   
   " Detect and track visual selection bounds
