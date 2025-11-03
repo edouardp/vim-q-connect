@@ -56,16 +56,25 @@ function! PushContextUpdate()
   
   " Handle different buffer types and selection states
   if &buftype == 'terminal'
-    let context = "Terminal buffer - no context available"
+    let context = "The user is in a Terminal buffer - no context available"
+    let buffer_type = 'terminal'
+  elseif &buftype == 'nofile' && exists('b:NERDTree')
+    let context = "The user in the NERDTree file browser - no context available"
+    let buffer_type = 'nerdtree'
+  elseif &buftype != ''
+    let context = "The user is in a non-text buffer (" . &buftype . ") - no context available"
+    let buffer_type = &buftype
   elseif g:visual_start > 0 && g:visual_end > 0
     " Visual selection active - send selected lines
     let lines = getline(g:visual_start, g:visual_end)
     let context = "# " . g:current_filename . "\n\nLines " . g:visual_start . "-" . g:visual_end . ":\n```\n" . join(lines, "\n") . "\n```"
+    let buffer_type = 'text'
   else
     " Normal mode - send current line with context
     let line_content = getline(g:current_line)
     let total_lines = line('$')
     let context = "# " . g:current_filename . "\n\nLine " . g:current_line . "/" . total_lines . ":\n```\n" . line_content . "\n```"
+    let buffer_type = 'text'
   endif
   
   " Build MCP message with comprehensive file metadata
@@ -80,6 +89,7 @@ function! PushContextUpdate()
       \ "modified": &modified ? 1 : 0,
       \ "encoding": &fileencoding != '' ? &fileencoding : &encoding,
       \ "line_endings": &fileformat,
+      \ "buffer_type": buffer_type,
       \ "context": context
     \ }
   \ }
