@@ -181,8 +181,8 @@ endfunction
 " Internal: Update context state and push to MCP server
 " Called by autocmds on cursor movement, text changes, etc.
 function! WriteContext()
-  " Skip if tracking disabled or in terminal buffer
-  if !g:context_active || &buftype == 'terminal'
+  " Skip if tracking disabled
+  if !g:context_active
     return
   endif
   
