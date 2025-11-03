@@ -26,22 +26,48 @@ endfunction
 
 " Navigate to line/file outside callback context
 function! s:DoGotoLine(line_num, filename)
-  " Find first non-terminal window
-  for i in range(1, winnr('$'))
-    if getwinvar(i, '&buftype') != 'terminal'
-      execute i . 'wincmd w'
-      break
-    endif
-  endfor
+  " If in terminal/nofile/empty buffer, switch to first file buffer
+  if &buftype != ''
+    for i in range(1, winnr('$'))
+      let buftype = getwinvar(i, '&buftype')
+      let is_nerdtree = getwinvar(i, 'b:NERDTree', 0)
+      if buftype == '' && !is_nerdtree
+        execute i . 'wincmd w'
+        break
+      endif
+    endfor
+  endif
   
+  " If filename specified, find window with that buffer
   if a:filename != ''
-    let bufnr = bufnr(a:filename)
-    if bufnr == -1
-      execute 'edit ' . fnameescape(a:filename)
+    let target_bufnr = bufnr(a:filename)
+    if target_bufnr != -1
+      " Check all tabs for this buffer
+      for tabnr in range(1, tabpagenr('$'))
+        let winnr = bufwinnr(target_bufnr, tabnr)
+        if winnr != -1
+          execute 'tabnext ' . tabnr
+          execute winnr . 'wincmd w'
+          break
+        endif
+      endfor
+      " If not found in any window, open in current tab
+      if bufwinnr(target_bufnr) == -1
+        if &modified
+          execute 'split | buffer ' . target_bufnr
+        else
+          execute 'buffer ' . target_bufnr
+        endif
+      endif
     else
-      execute 'buffer ' . bufnr
+      if &modified
+        execute 'split | edit ' . fnameescape(a:filename)
+      else
+        execute 'edit ' . fnameescape(a:filename)
+      endif
     endif
   endif
+  
   execute a:line_num
   normal! zz
 endfunction
