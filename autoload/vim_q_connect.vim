@@ -44,15 +44,19 @@ function! s:DoGotoLine(line_num, filename)
     if target_bufnr != -1
       " Check all tabs for this buffer
       for tabnr in range(1, tabpagenr('$'))
-        let winnr = bufwinnr(target_bufnr, tabnr)
-        if winnr != -1
-          execute 'tabnext ' . tabnr
-          execute winnr . 'wincmd w'
+        for winnr in range(1, tabpagewinnr(tabnr, '$'))
+          if tabpagebuflist(tabnr)[winnr-1] == target_bufnr
+            execute 'tabnext ' . tabnr
+            execute winnr . 'wincmd w'
+            break
+          endif
+        endfor
+        if tabpagenr() == tabnr && winnr() <= tabpagewinnr(tabnr, '$') && bufnr('%') == target_bufnr
           break
         endif
       endfor
       " If not found in any window, open in current tab
-      if bufwinnr(target_bufnr) == -1
+      if bufnr('%') != target_bufnr
         if &modified
           execute 'split | buffer ' . target_bufnr
         else
