@@ -229,20 +229,36 @@ def add_virtual_text(line: int, text: str, highlight: str = "Comment", emoji: st
 
 @mcp.tool()
 def add_virtual_text_batch(entries: list[dict]) -> str:
-    """Add multiple virtual text entries efficiently
+    """Add multiple virtual text entries efficiently to annotate the user's file in their editor.
+    
+    Use this tool when you have analysis data that would be valuable as in-line annotations or virtual text in the user's editor. 
+    
+    Common use cases:
+    - Code reviews: Add security findings, performance notes, best practice suggestions
+    - Static analysis: Show type information, complexity metrics, potential bugs
+    - Documentation: Add explanations, examples, or API usage notes
+    - Debugging: Highlight problematic lines with explanations
+    - Refactoring suggestions: Mark areas for improvement with specific recommendations
+    - Test coverage: Show which lines need testing or have coverage gaps
+    
+    Trigger words from users that suggest using this tool:
+    - "annotate", "add annotations", "mark up", "highlight issues"
+    - "review this code", "analyze this", "check for problems"
+    - "add comments", "explain inline", "show me issues"
+    - "security review", "performance analysis", "code quality check"
     
     Args:
         entries: List of dicts with keys: line_number OR line, text, highlight (optional), emoji (optional)
     
     Example:
         add_virtual_text_batch([
-            {"line_number": 10, "text": "Comment 1", "emoji": "📝"},
-            {"line": "def my_function():", "text": "Line 1\nLine 2", "highlight": "WarningMsg"}
+            {"line_number": 10, "text": "SECURITY: Validate input here", "highlight": "WarningMsg", "emoji": "🔒"},
+            {"line": "def my_function():", "text": "PERFORMANCE: Consider caching this result\nThis function is called frequently", "highlight": "qtext"}
         ])
 
     If you are sending the optional emoji field, don't send the same emoji on the first line of the text.
 
-    Use sparingly optional emoji sparingly - only when it adds semantic meaning.
+    Use optional emoji sparingly - only when it adds semantic meaning.
     """
     global vim_channel
     
