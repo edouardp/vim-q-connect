@@ -21,6 +21,15 @@ function! HandleMCPMessage(channel, msg)
     let line_num = data.params.line
     let filename = get(data.params, 'filename', '')
     call timer_start(0, {-> s:DoGotoLine(line_num, filename)})
+  elseif data.method == 'add_virtual_text'
+    let line_num = data.params.line
+    let text = data.params.text
+    let highlight = get(data.params, 'highlight', 'Comment')
+    let emoji = get(data.params, 'emoji', '')
+    call timer_start(0, {-> s:DoAddVirtualText(line_num, text, highlight, emoji)})
+  elseif data.method == 'add_virtual_text_batch'
+    let entries = data.params.entries
+    call timer_start(0, {-> s:DoAddVirtualTextBatch(entries)})
   endif
 endfunction
 
@@ -74,6 +83,79 @@ function! s:DoGotoLine(line_num, filename)
   
   execute a:line_num
   normal! zz
+endfunction
+
+" Initialize property types for virtual text
+function! s:InitPropTypes()
+  if empty(prop_type_get('q_connect'))
+    call prop_type_add('q_connect', {'highlight': 'Comment'})
+  endif
+  if empty(prop_type_get('q_connect_warning'))
+    call prop_type_add('q_connect_warning', {'highlight': 'WarningMsg'})
+  endif
+  if empty(prop_type_get('q_connect_error'))
+    call prop_type_add('q_connect_error', {'highlight': 'ErrorMsg'})
+  endif
+  if empty(prop_type_get('q_connect_add'))
+    call prop_type_add('q_connect_add', {'highlight': 'DiffAdd'})
+  endif
+  if empty(prop_type_get('q_connect_qtext'))
+    call prop_type_add('q_connect_qtext', {'highlight': 'qtext', 'text_wrap': 'wrap'})
+  endif
+endfunction
+
+" Add virtual text above specified line
+function! s:DoAddVirtualText(line_num, text, highlight, emoji)
+  call s:InitPropTypes()
+  
+  let l:prop_type = 'q_connect'
+  if a:highlight == 'WarningMsg'
+    let l:prop_type = 'q_connect_warning'
+  elseif a:highlight == 'ErrorMsg'
+    let l:prop_type = 'q_connect_error'
+  elseif a:highlight == 'DiffAdd'
+    let l:prop_type = 'q_connect_add'
+  elseif a:highlight == 'qtext'
+    let l:prop_type = 'q_connect_qtext'
+  endif
+  
+  " Use provided emoji or default to fullwidth Q
+  let display_emoji = empty(a:emoji) ? 'Ｑ' : a:emoji
+  
+  " Split text on newlines for multi-line virtual text
+  let lines = split(a:text, '\n', 1)
+  let win_width = winwidth(0)
+  
+  for i in range(len(lines))
+    let line_text = lines[i]
+    
+    " Format first line with emoji and connector, others with continuation
+    if i == 0
+      let formatted_text = ' ' . display_emoji . ' ┤ ' . line_text
+    else
+      " Calculate spacing to align with first line text
+      let spacing = strdisplaywidth(' ' . display_emoji . ' ')
+      let formatted_text = repeat(' ', spacing) . '│ ' . line_text
+    endif
+    
+    " Pad text to window width + 30 chars for full-line background
+    let padded_text = formatted_text . repeat(' ', win_width + 30 - len(formatted_text))
+    call prop_add(a:line_num, 0, {
+      \ 'type': l:prop_type,
+      \ 'text': padded_text,
+      \ 'text_align': 'above'
+    \ })
+  endfor
+endfunction
+
+" Clear all Q Connect virtual text
+function! QClearVirtualText()
+  call prop_remove({'type': 'q_connect', 'all': 1})
+  call prop_remove({'type': 'q_connect_warning', 'all': 1})
+  call prop_remove({'type': 'q_connect_error', 'all': 1})
+  call prop_remove({'type': 'q_connect_add', 'all': 1})
+  call prop_remove({'type': 'q_connect_qtext', 'all': 1})
+  echo "Q Connect virtual text cleared"
 endfunction
 
 " Send current editor context to Q CLI MCP server
@@ -237,4 +319,15 @@ function! WriteContext()
   endif
   
   call PushContextUpdate()
+endfunction
+
+" Add multiple virtual text entries efficiently
+function! s:DoAddVirtualTextBatch(entries)
+  for entry in a:entries
+    let line_num = entry.line
+    let text = entry.text
+    let highlight = get(entry, 'highlight', 'Comment')
+    let emoji = get(entry, 'emoji', '')
+    call s:DoAddVirtualText(line_num, text, highlight, emoji)
+  endfor
 endfunction

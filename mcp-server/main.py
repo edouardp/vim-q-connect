@@ -128,7 +128,7 @@ start_socket_server()
 
 @mcp.tool()
 def get_editor_context() -> dict:
-    """Get the current editor context from Vim via channel."""
+    """Get the current editor context from Vim via channel. Use this tool whenever the user refers to code they are looking at in their editor, such as: "what is this", "explain this function", "how does this work", "what's wrong with this code", "optimize this", "add tests for this", "refactor this", "this file", "the current file", "this code", "the code I'm looking at", "can you help me with this", "review this", or any reference to current editor content."""
     global current_context, vim_connected
     
     if not vim_connected:
@@ -183,6 +183,85 @@ def goto_line(line_number: int, filename: str = "") -> str:
     except Exception as e:
         logger.error(f"Error sending navigation command: {e}")
         return f"Error sending navigation command: {e}"
+
+@mcp.tool()
+def add_virtual_text(line: int, text: str, highlight: str = "Comment", emoji: str = "") -> str:
+    """Add virtual text above the specified line
+    
+    Args:
+        line: Line number to add virtual text above (1-indexed)
+        text: Text content to display. Use actual newlines (not \\n) for multi-line text
+        highlight: Vim highlight group (default: "Comment")
+        emoji: Optional emoji for the first line (default: uses Ｑ). Use sparingly - only when it adds semantic meaning.
+    
+    Example:
+        Single line: add_virtual_text(10, "This is a comment")
+        Multi-line: add_virtual_text(10, "Line 1\nLine 2\nLine 3")
+        With emoji: add_virtual_text(10, "Debug info", emoji="🐛")
+        
+    Common working emoji: 🤖🔥⭐💡✅❌📝🚀🎯🔧⚡🎉📊🔍💻📱🌟🎨🏆🔒🔑📈📉🎵
+    Note: Warning sign ⚠️ may not render properly in some Vim environments. Don't use
+    """
+    global vim_channel
+    
+    if not vim_channel:
+        return "Vim not connected to MCP socket"
+    
+    try:
+        command = {
+            "method": "add_virtual_text",
+            "params": {
+                "line": line,
+                "text": text,
+                "highlight": highlight,
+                "emoji": emoji
+            }
+        }
+        
+        logger.info(f"Sending add_virtual_text command: {command}")
+        message = json.dumps(command) + '\n'
+        vim_channel.send(message.encode())
+        logger.info(f"Virtual text command sent successfully")
+        return f"Virtual text added above line {line}: {text}"
+    except Exception as e:
+        logger.error(f"Error sending virtual text command: {e}")
+        return f"Error sending virtual text command: {e}"
+
+@mcp.tool()
+def add_virtual_text_batch(entries: list[dict]) -> str:
+    """Add multiple virtual text entries efficiently
+    
+    Args:
+        entries: List of dicts with keys: line, text, highlight (optional), emoji (optional)
+    
+    Example:
+        add_virtual_text_batch([
+            {"line": 10, "text": "Comment 1", "emoji": "📝"},
+            {"line": 20, "text": "Line 1\nLine 2", "highlight": "WarningMsg"}
+        ])
+
+    If you are sending the optional emoji field, don't send the same emoji on the first line of the text.
+
+    Use sparingly optional emoji sparingly - only when it adds semantic meaning.
+    """
+    global vim_channel
+    
+    if not vim_channel:
+        return "Vim not connected to MCP socket"
+    
+    try:
+        command = {
+            "method": "add_virtual_text_batch",
+            "params": {"entries": entries}
+        }
+        
+        logger.info(f"Sending batch virtual text command: {len(entries)} entries")
+        message = json.dumps(command) + '\n'
+        vim_channel.send(message.encode())
+        return f"Batch virtual text added: {len(entries)} entries"
+    except Exception as e:
+        logger.error(f"Error sending batch virtual text command: {e}")
+        return f"Error sending batch virtual text command: {e}"
 
 if __name__ == "__main__":
     mcp.run()
