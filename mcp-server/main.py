@@ -232,12 +232,12 @@ def add_virtual_text_batch(entries: list[dict]) -> str:
     """Add multiple virtual text entries efficiently
     
     Args:
-        entries: List of dicts with keys: line, text, highlight (optional), emoji (optional)
+        entries: List of dicts with keys: line_number OR line, text, highlight (optional), emoji (optional)
     
     Example:
         add_virtual_text_batch([
-            {"line": 10, "text": "Comment 1", "emoji": "📝"},
-            {"line": 20, "text": "Line 1\nLine 2", "highlight": "WarningMsg"}
+            {"line_number": 10, "text": "Comment 1", "emoji": "📝"},
+            {"line": "def my_function():", "text": "Line 1\nLine 2", "highlight": "WarningMsg"}
         ])
 
     If you are sending the optional emoji field, don't send the same emoji on the first line of the text.

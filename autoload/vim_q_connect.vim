@@ -324,10 +324,35 @@ endfunction
 " Add multiple virtual text entries efficiently
 function! s:DoAddVirtualTextBatch(entries)
   for entry in a:entries
-    let line_num = entry.line
+    " Determine line number - support both 'line_number' and 'line' keys
+    if has_key(entry, 'line_number')
+      let line_num = entry.line_number
+    elseif has_key(entry, 'line') && type(entry.line) == v:t_number
+      let line_num = entry.line
+    elseif has_key(entry, 'line') && type(entry.line) == v:t_string
+      " Search for the line text in the current buffer
+      let line_num = s:FindLineByText(entry.line)
+      if line_num == 0
+        continue  " Skip if line not found
+      endif
+    else
+      continue  " Skip entry if no valid line specification
+    endif
+    
     let text = entry.text
     let highlight = get(entry, 'highlight', 'Comment')
     let emoji = get(entry, 'emoji', '')
     call s:DoAddVirtualText(line_num, text, highlight, emoji)
   endfor
+endfunction
+
+" Find line number by searching for text content
+function! s:FindLineByText(line_text)
+  let total_lines = line('$')
+  for i in range(1, total_lines)
+    if getline(i) ==# a:line_text
+      return i
+    endif
+  endfor
+  return 0  " Not found
 endfunction
