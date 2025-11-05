@@ -249,8 +249,8 @@ def add_virtual_text(entries: list[dict]) -> str:
     
     Args:
         entries: List of dictionaries, each containing:
-            - line_number (int): 1-indexed line number to add virtual text above
-            - line (str): Alternative to line_number - exact text content of the line to search for
+            - line (str): Exact text content of the line to search for. Use this line argument in preference to line_number because it's more robust - annotations stay correct even if line numbers shift due to edits.
+            - line_number (int): Alternative to line. 1-indexed line number to add virtual text above. Don't use the line_number argument unless the line is absolutely known, e.g. from an immediately preceeding get_editor_context tool call.
             - text (str): The annotation text to display (supports multi-line with \n)
             - highlight (str, optional): Vim highlight group (ignored for now - will always uses qtext styling)
             - emoji (str, optional): Single emoji character for visual emphasis (defaults to Ｑ)
