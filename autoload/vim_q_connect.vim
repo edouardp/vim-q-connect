@@ -108,16 +108,8 @@ endfunction
 function! s:DoAddVirtualText(line_num, text, highlight, emoji)
   call s:InitPropTypes()
   
-  let l:prop_type = 'q_connect'
-  if a:highlight == 'WarningMsg'
-    let l:prop_type = 'q_connect_warning'
-  elseif a:highlight == 'ErrorMsg'
-    let l:prop_type = 'q_connect_error'
-  elseif a:highlight == 'DiffAdd'
-    let l:prop_type = 'q_connect_add'
-  elseif a:highlight == 'qtext'
-    let l:prop_type = 'q_connect_qtext'
-  endif
+  " Always use qtext highlight (ignore passed highlight parameter)
+  let l:prop_type = 'q_connect_qtext'
   
   " Use provided emoji or default to fullwidth Q
   let display_emoji = empty(a:emoji) ? 'Ｑ' : a:emoji
