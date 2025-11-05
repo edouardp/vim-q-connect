@@ -184,51 +184,51 @@ def goto_line(line_number: int, filename: str = "") -> str:
         logger.error(f"Error sending navigation command: {e}")
         return f"Error sending navigation command: {e}"
 
-@mcp.tool()
-def add_virtual_text(line: int, text: str, highlight: str = "Comment", emoji: str = "") -> str:
-    """Add virtual text above the specified line
-    
-    Args:
-        line: Line number to add virtual text above (1-indexed)
-        text: Text content to display. Use actual newlines (not \\n) for multi-line text
-        highlight: Vim highlight group (default: "Comment")
-        emoji: Optional emoji for the first line (default: uses Ｑ). Use sparingly - only when it adds semantic meaning.
-    
-    Example:
-        Single line: add_virtual_text(10, "This is a comment")
-        Multi-line: add_virtual_text(10, "Line 1\nLine 2\nLine 3")
-        With emoji: add_virtual_text(10, "Debug info", emoji="🐛")
-        
-    Common working emoji: 🤖🔥⭐💡✅❌📝🚀🎯🔧⚡🎉📊🔍💻📱🌟🎨🏆🔒🔑📈📉🎵
-    Note: Warning sign ⚠️ may not render properly in some Vim environments. Don't use
-    """
-    global vim_channel
-    
-    if not vim_channel:
-        return "Vim not connected to MCP socket"
-    
-    try:
-        command = {
-            "method": "add_virtual_text",
-            "params": {
-                "line": line,
-                "text": text,
-                "highlight": highlight,
-                "emoji": emoji
-            }
-        }
-        
-        logger.info(f"Sending add_virtual_text command: {command}")
-        message = json.dumps(command) + '\n'
-        vim_channel.send(message.encode())
-        logger.info(f"Virtual text command sent successfully")
-        return f"Virtual text added above line {line}: {text}"
-    except Exception as e:
-        logger.error(f"Error sending virtual text command: {e}")
-        return f"Error sending virtual text command: {e}"
+# @mcp.tool()
+# def add_virtual_text(line: int, text: str, highlight: str = "Comment", emoji: str = "") -> str:
+#     """Add virtual text above the specified line
+#     
+#     Args:
+#         line: Line number to add virtual text above (1-indexed)
+#         text: Text content to display. Use actual newlines (not \\n) for multi-line text
+#         highlight: Vim highlight group (default: "Comment")
+#         emoji: Optional emoji for the first line (default: uses Ｑ). Use sparingly - only when it adds semantic meaning.
+#     
+#     Example:
+#         Single line: add_virtual_text(10, "This is a comment")
+#         Multi-line: add_virtual_text(10, "Line 1\nLine 2\nLine 3")
+#         With emoji: add_virtual_text(10, "Debug info", emoji="🐛")
+#         
+#     Common working emoji: 🤖🔥⭐💡✅❌📝🚀🎯🔧⚡🎉📊🔍💻📱🌟🎨🏆🔒🔑📈📉🎵
+#     Note: Warning sign ⚠️ may not render properly in some Vim environments. Don't use
+#     """
+#     global vim_channel
+#     
+#     if not vim_channel:
+#         return "Vim not connected to MCP socket"
+#     
+#     try:
+#         command = {
+#             "method": "add_virtual_text",
+#             "params": {
+#                 "line": line,
+#                 "text": text,
+#                 "highlight": highlight,
+#                 "emoji": emoji
+#             }
+#         }
+#         
+#         logger.info(f"Sending add_virtual_text command: {command}")
+#         message = json.dumps(command) + '\n'
+#         vim_channel.send(message.encode())
+#         logger.info(f"Virtual text command sent successfully")
+#         return f"Virtual text added above line {line}: {text}"
+#     except Exception as e:
+#         logger.error(f"Error sending virtual text command: {e}")
+#         return f"Error sending virtual text command: {e}"
 
 @mcp.tool()
-def add_virtual_text_batch(entries: list[dict]) -> str:
+def add_virtual_text(entries: list[dict]) -> str:
     """Add multiple virtual text entries efficiently to annotate the user's file in their editor.
     
     Use this tool when you have analysis data that would be valuable as in-line annotations or virtual text in the user's editor. 
@@ -248,7 +248,12 @@ def add_virtual_text_batch(entries: list[dict]) -> str:
     - "security review", "performance analysis", "code quality check"
     
     Args:
-        entries: List of dicts with keys: line_number OR line, text, highlight (optional), emoji (optional)
+        entries: List of dictionaries, each containing:
+            - line_number (int): 1-indexed line number to add virtual text above
+            - line (str): Alternative to line_number - exact text content of the line to search for
+            - text (str): The annotation text to display (supports multi-line with \n)
+            - highlight (str, optional): Vim highlight group (ignored for now - will always uses qtext styling)
+            - emoji (str, optional): Single emoji character for visual emphasis (defaults to Ｑ)
     
     Example:
         add_virtual_text_batch([
@@ -259,6 +264,9 @@ def add_virtual_text_batch(entries: list[dict]) -> str:
     If you are sending the optional emoji field, don't send the same emoji on the first line of the text.
 
     Use optional emoji sparingly - only when it adds semantic meaning.
+
+    Common working emoji: 🤖🔥⭐💡✅❌📝🚀🎯🔧⚡🎉📊🔍💻📱🌟🎨🏆🔒🔑📈📉🎵
+    Note: Warning sign ⚠️ may not render properly in some Vim environments. Do not use.
     """
     global vim_channel
     
