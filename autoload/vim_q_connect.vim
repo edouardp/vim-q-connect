@@ -150,11 +150,26 @@ endfunction
 
 " Clear all Q Connect virtual text
 function! QClearVirtualText()
-  call prop_remove({'type': 'q_connect', 'all': 1})
-  call prop_remove({'type': 'q_connect_warning', 'all': 1})
-  call prop_remove({'type': 'q_connect_error', 'all': 1})
-  call prop_remove({'type': 'q_connect_add', 'all': 1})
-  call prop_remove({'type': 'q_connect_qtext', 'all': 1})
+  try
+    call prop_remove({'type': 'q_connect', 'all': 1})
+  catch
+  endtry
+  try
+    call prop_remove({'type': 'q_connect_warning', 'all': 1})
+  catch
+  endtry
+  try
+    call prop_remove({'type': 'q_connect_error', 'all': 1})
+  catch
+  endtry
+  try
+    call prop_remove({'type': 'q_connect_add', 'all': 1})
+  catch
+  endtry
+  try
+    call prop_remove({'type': 'q_connect_qtext', 'all': 1})
+  catch
+  endtry
   echo "Q Connect virtual text cleared"
 endfunction
 
