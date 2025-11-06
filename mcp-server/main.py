@@ -1,3 +1,27 @@
+"""
+MCP Server for vim-q-connect plugin
+
+This server provides Model Context Protocol (MCP) integration between Vim and Q CLI.
+It enables bidirectional communication for editor context sharing and remote control.
+
+Key Features:
+- Real-time editor context reception from vim-q-connect plugin
+- Virtual text annotation support with goto_line navigation
+- Unix domain socket communication for low-latency IPC
+- Thread-safe message handling and client management
+
+MCP Tools Provided:
+- get_editor_context: Retrieve current Vim editor state and context
+- goto_line: Navigate to specific line/file in Vim editor
+- add_virtual_text: Add annotations and virtual text to editor
+
+Usage:
+    python main.py [socket_path]
+
+The server listens on a Unix domain socket and handles JSON-RPC messages
+from both the vim-q-connect plugin and Q CLI MCP client.
+"""
+
 import os
 import socket
 import json
@@ -29,6 +53,20 @@ current_context = {
 }
 
 def handle_vim_message(message):
+    """
+    Process incoming messages from vim-q-connect plugin.
+    
+    Handles two types of messages:
+    - context_update: Updates the current editor context with file/cursor state
+    - disconnect: Marks the Vim connection as disconnected
+    
+    Args:
+        message: JSON string containing method and params
+        
+    Updates global state:
+        current_context: Dictionary with editor state (filename, line, selection, etc.)
+        vim_connected: Boolean flag indicating connection status
+    """
     global current_context, vim_connected
     
     try:
