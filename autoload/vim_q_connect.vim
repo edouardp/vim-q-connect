@@ -141,7 +141,7 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
 endfunction
 
 " Clear all Q Connect virtual text
-function! QClearVirtualText()
+function! vim_q_connect#clear_virtual_text()
   try
     call prop_remove({'type': 'q_connect', 'all': 1})
   catch
