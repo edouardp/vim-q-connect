@@ -282,8 +282,8 @@ def add_virtual_text(entries: list[dict]) -> str:
     Trigger words from users that suggest using this tool:
     - "annotate", "add annotations", "mark up", "highlight issues"
     - "review this code", "analyze this", "check for problems"
-    - "add comments", "explain inline", "show me issues"
-    - "security review", "performance analysis", "code quality check"
+    - "explain inline", "show me issues", "code quality check"
+    - "security review", "performance analysis"
     
     Args:
         entries: List of dictionaries, each containing:
