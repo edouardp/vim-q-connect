@@ -257,6 +257,21 @@ endfunction
 function! OnMCPClose(channel)
   echo "MCP channel closed"
   let g:mcp_channel = v:null
+  
+  " Restore autoread settings if connection was broken unexpectedly
+  if exists('g:vim_q_connect_saved_autoread')
+    let &autoread = g:vim_q_connect_saved_autoread
+    unlet g:vim_q_connect_saved_autoread
+    
+    " Remove AutoRead group if it didn't exist before
+    if exists('g:vim_q_connect_saved_autoread_group') && !g:vim_q_connect_saved_autoread_group
+      augroup AutoRead
+        autocmd!
+      augroup END
+      augroup! AutoRead
+      unlet g:vim_q_connect_saved_autoread_group
+    endif
+  endif
 endfunction
 
 " Public API: Start context tracking and MCP connection
@@ -264,6 +279,23 @@ endfunction
 function! vim_q_connect#start_tracking()
   let g:context_active = 1
   call StartMCPServer()
+  
+  " Only proceed if connection successful
+  if g:mcp_channel != v:null && ch_status(g:mcp_channel) == 'open'
+    " Save current autoread settings
+    let g:vim_q_connect_saved_autoread = &autoread
+    let g:vim_q_connect_saved_autoread_group = exists('#AutoRead')
+    
+    " Enable autoread
+    set autoread
+    
+    " Set up autoread autocmds
+    augroup AutoRead
+      autocmd!
+      autocmd FocusGained,BufEnter,CursorHold,CursorHoldI * checktime
+    augroup END
+  endif
+  
   call WriteContext()
   
   " Monitor all relevant editor events for context updates
@@ -288,6 +320,21 @@ function! vim_q_connect#stop_tracking()
     let g:mcp_channel = v:null
   endif
   let g:context_active = 0
+  
+  " Restore autoread settings if they were saved
+  if exists('g:vim_q_connect_saved_autoread')
+    let &autoread = g:vim_q_connect_saved_autoread
+    unlet g:vim_q_connect_saved_autoread
+    
+    " Remove AutoRead group if it didn't exist before
+    if exists('g:vim_q_connect_saved_autoread_group') && !g:vim_q_connect_saved_autoread_group
+      augroup AutoRead
+        autocmd!
+      augroup END
+      augroup! AutoRead
+      unlet g:vim_q_connect_saved_autoread_group
+    endif
+  endif
   
   " Remove all autocmds
   augroup VimLLMContext
