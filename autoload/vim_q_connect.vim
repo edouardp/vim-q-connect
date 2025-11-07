@@ -94,29 +94,9 @@ endfunction
 " Initialize property types for virtual text
 function! s:InitPropTypes()
   try
-    call prop_type_get('q_connect')
-  catch
-    call prop_type_add('q_connect', {'highlight': 'Comment'})
-  endtry
-  try
-    call prop_type_get('q_connect_warning')
-  catch
-    call prop_type_add('q_connect_warning', {'highlight': 'WarningMsg'})
-  endtry
-  try
-    call prop_type_get('q_connect_error')
-  catch
-    call prop_type_add('q_connect_error', {'highlight': 'ErrorMsg'})
-  endtry
-  try
-    call prop_type_get('q_connect_add')
-  catch
-    call prop_type_add('q_connect_add', {'highlight': 'DiffAdd'})
-  endtry
-  try
     call prop_type_get('q_connect_qtext')
   catch
-    call prop_type_add('q_connect_qtext', {'highlight': 'qtext', 'text_wrap': 'wrap'})
+    call prop_type_add('q_connect_qtext', {'highlight': 'qtext'})
   endtry
 endfunction
 
