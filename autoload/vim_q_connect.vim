@@ -127,7 +127,6 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
   
   " Use provided emoji or default to fullwidth Q
   let display_emoji = empty(a:emoji) ? 'Ｑ' : a:emoji
-  echo "DoAddVirtualText: emoji='" . a:emoji . "' display_emoji='" . display_emoji . "'"
   
   " Split text on newlines for multi-line virtual text
   let lines = split(a:text, '\n', 1)
@@ -660,10 +659,8 @@ function! vim_q_connect#quickfix_annotate()
         let emoji = ''
         if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji') && !empty(entry.user_data.emoji)
           let emoji = entry.user_data.emoji
-          echo "Using user_data emoji: " . emoji
         else
-          let emoji = entry.type ==# 'E' ? '❌' : entry.type ==# 'W' ? '⚠️' : '💡'
-          echo "Entry type: '" . get(entry, 'type', 'MISSING') . "' -> emoji: '" . emoji . "'"
+          let emoji = entry.type ==# 'E' ? '🔴' : entry.type ==# 'W' ? '🔶' : '🟢'
         endif
         
         " Switch to the buffer temporarily to add virtual text
