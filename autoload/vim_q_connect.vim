@@ -174,23 +174,35 @@ function! s:DoGetAnnotations(request_id)
     return
   endif
   
+  " Get annotations up to 20 lines above current position
   let current_line = line('.')
   let annotations = []
+  let closest_distance = 999
   
-  " Get all text properties at current line
-  let prop_types = ['q_connect', 'q_connect_warning', 'q_connect_error', 'q_connect_add', 'q_connect_qtext']
-  
-  for prop_type in prop_types
-    let props = prop_list(current_line, {'type': prop_type})
-    for prop in props
-      if has_key(prop, 'text')
-        call add(annotations, {
-          \ 'type': prop_type,
-          \ 'text': prop.text,
-          \ 'line': current_line
-        \ })
+  " Check lines above current position
+  for line_num in range(max([1, current_line - 20]), current_line - 1)
+    let props = prop_list(line_num, {'type': 'q_connect_qtext'})
+    if !empty(props)
+      let distance = current_line - line_num
+      if distance < closest_distance
+        " Found closer annotations, reset list
+        let closest_distance = distance
+        let annotations = []
       endif
-    endfor
+      
+      if distance == closest_distance
+        " Add annotations at this distance
+        for prop in props
+          if has_key(prop, 'text')
+            call add(annotations, {
+              \ 'type': prop.type,
+              \ 'text': prop.text,
+              \ 'line': line_num
+            \ })
+          endif
+        endfor
+      endif
+    endif
   endfor
   
   " Send response back to MCP server
