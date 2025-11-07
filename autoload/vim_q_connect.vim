@@ -633,16 +633,7 @@ endfunction
 
 " Set up autocmd for quickfix annotations after first quickfix list is created
 function! s:SetupQuickfixAutocmd()
-  " Only set up once
-  if exists('g:quickfix_autocmd_setup')
-    return
-  endif
-  let g:quickfix_autocmd_setup = 1
-  
-  augroup QQuickfixAnnotate
-    autocmd!
-    autocmd BufEnter * if !empty(getqflist()) | call vim_q_connect#quickfix_annotate() | endif
-  augroup END
+  " Autocmd setup disabled - manual annotation only
 endfunction
 
 " Find all line numbers by searching for text content in current buffer
