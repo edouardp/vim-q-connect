@@ -357,7 +357,11 @@ def get_annotations_above_current_position() -> str:
         logger.info("Requesting annotations at current position")
         message = json.dumps(command) + '\n'
         vim_channel.send(message.encode())
-        return "Annotation request sent"
+        
+        # Wait for response
+        response_data = vim_channel.recv(4096).decode()
+        logger.info(f"Received annotations response: {response_data}")
+        return response_data
     except Exception as e:
         logger.error(f"Error requesting annotations: {e}")
         return f"Error requesting annotations: {e}"
