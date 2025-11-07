@@ -436,7 +436,7 @@ function! s:DoAddVirtualTextBatch(entries)
     
     if empty(emoji) && !empty(text)
       " Check if text starts with emoji
-      let first_char = strpart(text, 0, 1)
+      let first_char = strcharpart(text, 0, 1)
       if char2nr(first_char) > 127  " Non-ASCII, likely emoji
         let emoji = first_char
         " Remove emoji and following whitespace from text
@@ -670,7 +670,7 @@ function! vim_q_connect#quickfix_annotate()
         " Extract emoji from text and clean the text
         let text = entry.text
         let emoji = ''
-        let first_char = strpart(text, 0, 1)
+        let first_char = strcharpart(text, 0, 1)
         if char2nr(first_char) > 127  " Non-ASCII, likely emoji
           let emoji = first_char
           let text = substitute(text, '^.\s*', '', '')
