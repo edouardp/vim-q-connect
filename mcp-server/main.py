@@ -39,23 +39,43 @@ logger = logging.getLogger("vim-context")
 
 mcp = FastMCP("vim-context")
 
-# Global socket server and context storage
-socket_server = None
-vim_channel = None
-vim_connected = False
-request_queue = queue.Queue()
-response_queues = {}  # request_id -> queue
-current_context = {
-    "context": "No context available",
-    "filename": "",
-    "line": 0,
-    "visual_start": 0,
-    "visual_end": 0,
-    "total_lines": 0,
-    "modified": False,
-    "encoding": "",
-    "line_endings": ""
-}
+class VimState:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.socket_server = None
+        self.vim_channel = None
+        self.vim_connected = False
+        self.request_queue = queue.Queue()
+        self.response_queues = {}
+        self.current_context = {
+            "context": "No context available",
+            "filename": "",
+            "line": 0,
+            "visual_start": 0,
+            "visual_end": 0,
+            "total_lines": 0,
+            "modified": False,
+            "encoding": "",
+            "line_endings": ""
+        }
+    
+    def update_context(self, context):
+        with self._lock:
+            self.current_context = context
+    
+    def get_context(self):
+        with self._lock:
+            return self.current_context.copy()
+    
+    def set_connected(self, connected):
+        with self._lock:
+            self.vim_connected = connected
+    
+    def is_connected(self):
+        with self._lock:
+            return self.vim_connected
+
+vim_state = VimState()
 
 def handle_vim_message(message):
     """
@@ -73,13 +93,12 @@ def handle_vim_message(message):
         current_context: Dictionary with editor state (filename, line, selection, etc.)
         vim_connected: Boolean flag indicating connection status
     """
-    global current_context, vim_connected
     
     try:
         data = json.loads(message)
         if data.get('method') == 'context_update':
             params = data['params']
-            current_context = {
+            context = {
                 "context": params.get('context', 'No context available'),
                 "filename": params.get('filename', ''),
                 "line": params.get('line', 0),
@@ -90,30 +109,30 @@ def handle_vim_message(message):
                 "encoding": params.get('encoding', ''),
                 "line_endings": params.get('line_endings', '')
             }
-            vim_connected = True
+            vim_state.update_context(context)
+            vim_state.set_connected(True)
             logger.info(f"Context updated: {params.get('filename', '')}:{params.get('line', 0)}")
         elif data.get('method') == 'disconnect':
-            vim_connected = False
+            vim_state.set_connected(False)
             logger.info("Vim explicitly disconnected")
         elif data.get('method') == 'annotations_response':
             annotations = data.get('params', {}).get('annotations', [])
             request_id = data.get('request_id')
             logger.info(f"Received {len(annotations)} annotations from Vim (request_id: {request_id})")
             # Put response in the correct queue
-            if request_id and request_id in response_queues:
-                response_queues[request_id].put(('annotations', annotations))
+            if request_id and request_id in vim_state.response_queues:
+                vim_state.response_queues[request_id].put(('annotations', annotations))
         elif data.get('method') == 'quickfix_entry_response':
             params = data.get('params', {})
             request_id = data.get('request_id')
             logger.info(f"Received quickfix entry from Vim (request_id: {request_id})")
             # Put response in the correct queue
-            if request_id and request_id in response_queues:
-                response_queues[request_id].put(('quickfix_entry', params))
+            if request_id and request_id in vim_state.response_queues:
+                vim_state.response_queues[request_id].put(('quickfix_entry', params))
     except Exception as e:
         logger.error(f"Error handling Vim message: {e}")
 
 def start_socket_server():
-    global socket_server, vim_channel
     
     socket_dir = os.environ.get('SOCKET_DIR', '.')
     socket_path = os.path.join(socket_dir, '.vim-q-mcp.sock')
@@ -121,31 +140,31 @@ def start_socket_server():
     logger.info(f"Creating MCP socket at: {socket_path}")
     
     # Remove existing socket
-    if os.path.exists(socket_path):
+    try:
         os.unlink(socket_path)
+    except FileNotFoundError:
+        pass
     
-    socket_server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    socket_server.bind(socket_path)
-    socket_server.listen(1)
+    vim_state.socket_server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    vim_state.socket_server.bind(socket_path)
+    vim_state.socket_server.listen(1)
     
     def accept_connections():
-        global vim_channel, vim_connected
         while True:
             try:
-                conn, addr = socket_server.accept()
-                vim_channel = conn
-                vim_connected = True
+                conn, addr = vim_state.socket_server.accept()
+                vim_state.vim_channel = conn
+                vim_state.set_connected(True)
                 logger.info("Vim connected to MCP socket")
                 
                 # Listen for messages from Vim
                 def listen_to_vim():
-                    global vim_connected
                     buffer = ""
                     while True:
                         try:
                             # Check for outgoing requests first
                             try:
-                                request_type, request_data = request_queue.get_nowait()
+                                request_type, request_data = vim_state.request_queue.get_nowait()
                                 message = json.dumps(request_data) + '\n'
                                 conn.send(message.encode())
                                 logger.info(f"Sent {request_type} request to Vim")
@@ -157,7 +176,7 @@ def start_socket_server():
                             try:
                                 data = conn.recv(4096).decode()
                                 if not data:
-                                    vim_connected = False
+                                    vim_state.set_connected(False)
                                     logger.info("Vim disconnected from MCP socket")
                                     break
                                 
@@ -185,7 +204,7 @@ def start_socket_server():
                                 
                         except Exception as e:
                             logger.error(f"Error in Vim communication: {e}")
-                            vim_connected = False
+                            vim_state.set_connected(False)
                             break
                 
                 threading.Thread(target=listen_to_vim, daemon=True).start()
@@ -200,9 +219,8 @@ def start_socket_server():
 @mcp.tool()
 def get_editor_context() -> dict:
     """Get the current editor context from Vim via channel. Use this tool whenever the user refers to code they are looking at in their editor, such as: "what is this", "explain this function", "how does this work", "what's wrong with this code", "optimize this", "add tests for this", "refactor this", "this file", "the current file", "this code", "the code I'm looking at", "can you help me with this", "review this", or any reference to current editor content."""
-    global current_context, vim_connected
     
-    if not vim_connected:
+    if not vim_state.is_connected():
         return {
             "content": "Editor not connected - no context available",
             "filename": "",
@@ -214,30 +232,30 @@ def get_editor_context() -> dict:
             "line_endings": ""
         }
     
+    context = vim_state.get_context()
     return {
-        "content": current_context["context"],
-        "filename": current_context["filename"],
-        "current_line": current_context["line"],
+        "content": context["context"],
+        "filename": context["filename"],
+        "current_line": context["line"],
         "visual_selection": {
-            "start_line": current_context["visual_start"],
-            "end_line": current_context["visual_end"]
-        } if current_context["visual_start"] > 0 else None,
-        "total_lines": current_context["total_lines"],
-        "modified": current_context["modified"],
-        "encoding": current_context["encoding"],
-        "line_endings": current_context["line_endings"]
+            "start_line": context["visual_start"],
+            "end_line": context["visual_end"]
+        } if context["visual_start"] > 0 else None,
+        "total_lines": context["total_lines"],
+        "modified": context["modified"],
+        "encoding": context["encoding"],
+        "line_endings": context["line_endings"]
     }
 
 @mcp.tool()
 def goto_line(line_number: int, filename: str = "") -> str:
     """Navigate to a specific line in Vim."""
-    global request_queue
     
-    if not vim_connected:
+    if not vim_state.is_connected():
         return "Vim not connected to MCP socket"
     
     try:
-        request_queue.put(('goto_line', {
+        vim_state.request_queue.put(('goto_line', {
             "method": "goto_line",
             "params": {
                 "line": line_number,
@@ -332,13 +350,12 @@ def add_virtual_text(entries: list[dict]) -> str:
     Common working emoji: 🤖🔥⭐💡✅❌📝🚀🎯🔧⚡🎉📊🔍💻📱🌟🎨🏆🔒🔑📈📉🎵
     Note: Warning sign ⚠️ may not render properly in some Vim environments. Do not use.
     """
-    global vim_channel
     
-    if not vim_connected:
+    if not vim_state.is_connected():
         return "Vim not connected to MCP socket"
     
     try:
-        request_queue.put(('add_virtual_text_batch', {
+        vim_state.request_queue.put(('add_virtual_text_batch', {
             "method": "add_virtual_text_batch",
             "params": {"entries": entries}
         }))
@@ -374,13 +391,12 @@ def add_to_quickfix(entries: list[dict]) -> str:
             {"line_number": 45, "text": "Performance issue: O(n²) complexity", "type": "W"}
         ])
     """
-    global vim_channel
     
-    if not vim_connected:
+    if not vim_state.is_connected():
         return "Vim not connected to MCP socket"
     
     try:
-        request_queue.put(('add_to_quickfix', {
+        vim_state.request_queue.put(('add_to_quickfix', {
             "method": "add_to_quickfix",
             "params": {"entries": entries}
         }))
@@ -388,7 +404,6 @@ def add_to_quickfix(entries: list[dict]) -> str:
         return f"Added {len(entries)} entries to quickfix list"
     except Exception as e:
         logger.error(f"Error sending quickfix command: {e}")
-        return f"Error sending quickfix command: {e}"
         return f"Error sending quickfix command: {e}"
 
 @mcp.tool()
@@ -406,19 +421,18 @@ def get_current_quickfix_entry() -> dict:
         - type: Error level ('E' for error, 'W' for warning, 'I' for info, 'N' for note)
         - error: Error message if quickfix is empty or Vim not connected
     """
-    global request_queue, response_queues
     
-    if not vim_connected:
+    if not vim_state.is_connected():
         return {"error": "Vim not connected to MCP socket"}
     
     try:
         # Create unique request ID and response queue
         request_id = str(uuid.uuid4())
         response_queue = queue.Queue()
-        response_queues[request_id] = response_queue
+        vim_state.response_queues[request_id] = response_queue
         
         # Put request in queue for server thread to send
-        request_queue.put(('get_current_quickfix', {
+        vim_state.request_queue.put(('get_current_quickfix', {
             "method": "get_current_quickfix",
             "request_id": request_id,
             "params": {}
@@ -435,7 +449,7 @@ def get_current_quickfix_entry() -> dict:
             return {"error": "Timeout waiting for quickfix entry response"}
         finally:
             # Clean up response queue
-            del response_queues[request_id]
+            del vim_state.response_queues[request_id]
             
     except Exception as e:
         logger.error(f"Error requesting quickfix entry: {e}")
@@ -451,19 +465,18 @@ def get_annotations_above_current_position() -> str:
     Returns:
         JSON string containing list of annotations with their text content and metadata
     """
-    global request_queue, response_queues
     
-    if not vim_connected:
+    if not vim_state.is_connected():
         return "Vim not connected to MCP socket"
     
     try:
         # Create unique request ID and response queue
         request_id = str(uuid.uuid4())
         response_queue = queue.Queue()
-        response_queues[request_id] = response_queue
+        vim_state.response_queues[request_id] = response_queue
         
         # Put request in queue for server thread to send
-        request_queue.put(('get_annotations', {
+        vim_state.request_queue.put(('get_annotations', {
             "method": "get_annotations",
             "request_id": request_id,
             "params": {}
@@ -480,7 +493,7 @@ def get_annotations_above_current_position() -> str:
             return "Timeout waiting for annotations response"
         finally:
             # Clean up response queue
-            del response_queues[request_id]
+            del vim_state.response_queues[request_id]
             
     except Exception as e:
         logger.error(f"Error requesting annotations: {e}")
