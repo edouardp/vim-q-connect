@@ -631,7 +631,8 @@ function! s:FindAllLinesByTextInFile(line_text, filename)
   let lines = getbufline(bufnr, 1, '$')
   let matches = []
   for i in range(len(lines))
-    if lines[i] ==# a:line_text
+    let line = lines[i]
+    if line ==# a:line_text || trim(line) ==# trim(a:line_text)
       call add(matches, i + 1)  " Line numbers are 1-indexed
     endif
   endfor
@@ -644,7 +645,8 @@ function! s:FindAllLinesByText(line_text)
   let total_lines = line('$')
   let matches = []
   for i in range(1, total_lines)
-    if getline(i) ==# a:line_text
+    let line = getline(i)
+    if line ==# a:line_text || trim(line) ==# trim(a:line_text)
       call add(matches, i)
     endif
   endfor
@@ -654,11 +656,10 @@ endfunction
 " Annotate quickfix entries as virtual text
 function! vim_q_connect#quickfix_annotate()
   let qf_list = getqflist()
-  let current_bufnr = bufnr('%')
   let annotated = 0
   
   for entry in qf_list
-    if has_key(entry, 'bufnr') && entry.bufnr == current_bufnr && has_key(entry, 'lnum') && has_key(entry, 'text')
+    if has_key(entry, 'bufnr') && has_key(entry, 'lnum') && has_key(entry, 'text')
       " Use emoji from user_data if available, otherwise fall back to type-based emoji
       let emoji = ''
       if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji')
@@ -667,12 +668,23 @@ function! vim_q_connect#quickfix_annotate()
         let emoji = entry.type ==# 'E' ? '❌' : entry.type ==# 'W' ? '⚠️' : '💡'
       endif
       
+      " Switch to the buffer temporarily to add virtual text
+      let current_buf = bufnr('%')
+      if entry.bufnr != current_buf
+        execute 'buffer ' . entry.bufnr
+      endif
+      
       call s:DoAddVirtualText(entry.lnum, entry.text, 'Comment', emoji)
       let annotated += 1
+      
+      " Switch back to original buffer if we changed
+      if entry.bufnr != current_buf
+        execute 'buffer ' . current_buf
+      endif
     endif
   endfor
   
   if annotated > 0
-    echo "Annotated " . annotated . " quickfix entries for current buffer"
+    echo "Annotated " . annotated . " quickfix entries across all buffers"
   endif
 endfunction
