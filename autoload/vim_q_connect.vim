@@ -435,12 +435,11 @@ function! s:DoAddVirtualTextBatch(entries)
     let emoji = get(entry, 'emoji', '')
     
     if empty(emoji) && !empty(text)
-      " Check if text starts with emoji
-      let first_char = strcharpart(text, 0, 1)
-      if char2nr(first_char) > 127  " Non-ASCII, likely emoji
-        let emoji = first_char
+      " Extract all leading emoji characters
+      let emoji = matchstr(text, '^[^\x00-\x7F]\+')
+      if !empty(emoji)
         " Remove emoji and following whitespace from text
-        let text = substitute(text, '^.\s*', '', '')
+        let text = substitute(text, '^[^\x00-\x7F]\+\s*', '', '')
       endif
     endif
     
@@ -670,10 +669,10 @@ function! vim_q_connect#quickfix_annotate()
         " Extract emoji from text and clean the text
         let text = entry.text
         let emoji = ''
-        let first_char = strcharpart(text, 0, 1)
-        if char2nr(first_char) > 127  " Non-ASCII, likely emoji
-          let emoji = first_char
-          let text = substitute(text, '^.\s*', '', '')
+        " Extract all leading emoji characters (non-ASCII)
+        let emoji = matchstr(text, '^[^\x00-\x7F]\+')
+        if !empty(emoji)
+          let text = substitute(text, '^[^\x00-\x7F]\+\s*', '', '')
         endif
         
         " Use emoji from user_data if available, otherwise use extracted or type-based emoji
