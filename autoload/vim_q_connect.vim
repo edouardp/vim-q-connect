@@ -445,19 +445,44 @@ endfunction
 " Add multiple virtual text entries efficiently
 function! s:DoAddVirtualTextBatch(entries)
   for entry in a:entries
-    " Determine line number - support both 'line_number' and 'line' keys
-    if has_key(entry, 'line_number')
-      let line_num = entry.line_number
-    elseif has_key(entry, 'line') && type(entry.line) == v:t_number
-      let line_num = entry.line
-    elseif has_key(entry, 'line') && type(entry.line) == v:t_string
-      " Search for the line text in the current buffer
-      let line_num = s:FindLineByText(entry.line)
-      if line_num == 0
-        continue  " Skip if line not found
+    " Validate required field
+    if !has_key(entry, 'line') || !has_key(entry, 'text')
+      continue
+    endif
+    
+    " Find line by text content
+    let line_matches = s:FindAllLinesByText(entry.line)
+    let line_num = 0
+    
+    if len(line_matches) == 1
+      " Single match - use it
+      let line_num = line_matches[0]
+    elseif len(line_matches) > 1
+      " Multiple matches - use line_number_hint if provided
+      if has_key(entry, 'line_number_hint')
+        let hint = entry.line_number_hint
+        " Find closest match to hint
+        let closest_match = line_matches[0]
+        let min_distance = abs(closest_match - hint)
+        for match in line_matches[1:]
+          let distance = abs(match - hint)
+          if distance < min_distance
+            let min_distance = distance
+            let closest_match = match
+          endif
+        endfor
+        let line_num = closest_match
+      else
+        " No hint - use first match
+        let line_num = line_matches[0]
       endif
     else
-      continue  " Skip entry if no valid line specification
+      " No matches - use line_number_hint if provided
+      if has_key(entry, 'line_number_hint')
+        let line_num = entry.line_number_hint
+      else
+        continue  " Skip if no line found and no hint
+      endif
     endif
     
     let text = entry.text
@@ -487,8 +512,8 @@ function! s:DoAddToQuickfix(entries)
   " First pass: resolve line numbers and build entries
   let resolved_entries = []
   for entry in a:entries
-    " Validate required field
-    if !has_key(entry, 'text')
+    " Validate required fields
+    if !has_key(entry, 'text') || !has_key(entry, 'line')
       let skipped += 1
       continue
     endif
@@ -500,21 +525,40 @@ function! s:DoAddToQuickfix(entries)
       let filename = current_file
     endif
     
-    " Determine line number - support both 'line_number' and 'line' keys
-    if has_key(entry, 'line_number')
-      let line_num = entry.line_number
-    elseif has_key(entry, 'line') && type(entry.line) == v:t_number
-      let line_num = entry.line
-    elseif has_key(entry, 'line') && type(entry.line) == v:t_string
-      " Search for the line text in the target file
-      let line_num = s:FindLineByTextInFile(entry.line, filename)
-      if line_num == 0
-        let skipped += 1
-        continue  " Skip if line not found
+    " Find line by text content
+    let line_matches = s:FindAllLinesByTextInFile(entry.line, filename)
+    let line_num = 0
+    
+    if len(line_matches) == 1
+      " Single match - use it
+      let line_num = line_matches[0]
+    elseif len(line_matches) > 1
+      " Multiple matches - use line_number_hint if provided
+      if has_key(entry, 'line_number_hint')
+        let hint = entry.line_number_hint
+        " Find closest match to hint
+        let closest_match = line_matches[0]
+        let min_distance = abs(closest_match - hint)
+        for match in line_matches[1:]
+          let distance = abs(match - hint)
+          if distance < min_distance
+            let min_distance = distance
+            let closest_match = match
+          endif
+        endfor
+        let line_num = closest_match
+      else
+        " No hint - use first match
+        let line_num = line_matches[0]
       endif
     else
-      let skipped += 1
-      continue  " Skip entry if no valid line specification
+      " No matches - use line_number_hint if provided
+      if has_key(entry, 'line_number_hint')
+        let line_num = entry.line_number_hint
+      else
+        let skipped += 1
+        continue
+      endif
     endif
     
     " Get entry type - E (error), W (warning), I (info), N (note)
@@ -526,6 +570,7 @@ function! s:DoAddToQuickfix(entries)
       \ 'lnum': line_num,
       \ 'text': entry.text,
       \ 'type': entry_type,
+      \ 'emoji': get(entry, 'emoji', ''),
       \ 'sort_key': filename . ':' . printf('%08d', line_num)
     \ })
   endfor
@@ -535,12 +580,19 @@ function! s:DoAddToQuickfix(entries)
   
   " Third pass: build final quickfix list
   for entry in resolved_entries
-    call add(qf_list, {
+    let qf_entry = {
       \ 'filename': entry.filename,
       \ 'lnum': entry.lnum,
       \ 'text': entry.text,
       \ 'type': entry.type
-    \ })
+    \ }
+    
+    " Add emoji to user_data if provided
+    if has_key(entry, 'emoji')
+      let qf_entry.user_data = {'emoji': entry.emoji}
+    endif
+    
+    call add(qf_list, qf_entry)
   endfor
   
   " Add to quickfix list
@@ -558,11 +610,11 @@ function! s:DoAddToQuickfix(entries)
   endif
 endfunction
 
-" Find line number by searching for text in a specific file
-function! s:FindLineByTextInFile(line_text, filename)
+" Find all line numbers by searching for text in a specific file
+function! s:FindAllLinesByTextInFile(line_text, filename)
   " If it's the current file, search directly
   if a:filename == expand('%:p')
-    return s:FindLineByText(a:line_text)
+    return s:FindAllLinesByText(a:line_text)
   endif
   
   " Get or create buffer for the file
@@ -577,13 +629,26 @@ function! s:FindLineByTextInFile(line_text, filename)
   
   " Search through buffer lines
   let lines = getbufline(bufnr, 1, '$')
+  let matches = []
   for i in range(len(lines))
     if lines[i] ==# a:line_text
-      return i + 1  " Line numbers are 1-indexed
+      call add(matches, i + 1)  " Line numbers are 1-indexed
     endif
   endfor
   
-  return 0  " Not found
+  return matches
+endfunction
+
+" Find all line numbers by searching for text content in current buffer
+function! s:FindAllLinesByText(line_text)
+  let total_lines = line('$')
+  let matches = []
+  for i in range(1, total_lines)
+    if getline(i) ==# a:line_text
+      call add(matches, i)
+    endif
+  endfor
+  return matches
 endfunction
 
 " Annotate quickfix entries as virtual text
@@ -594,7 +659,14 @@ function! vim_q_connect#quickfix_annotate()
   
   for entry in qf_list
     if has_key(entry, 'bufnr') && entry.bufnr == current_bufnr && has_key(entry, 'lnum') && has_key(entry, 'text')
-      let emoji = entry.type ==# 'E' ? '❌' : entry.type ==# 'W' ? '⚠️' : '💡'
+      " Use emoji from user_data if available, otherwise fall back to type-based emoji
+      let emoji = ''
+      if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji')
+        let emoji = entry.user_data.emoji
+      else
+        let emoji = entry.type ==# 'E' ? '❌' : entry.type ==# 'W' ? '⚠️' : '💡'
+      endif
+      
       call s:DoAddVirtualText(entry.lnum, entry.text, 'Comment', emoji)
       let annotated += 1
     endif
