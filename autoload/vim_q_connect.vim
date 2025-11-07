@@ -30,6 +30,8 @@ function! HandleMCPMessage(channel, msg)
   elseif data.method == 'add_virtual_text_batch'
     let entries = data.params.entries
     call timer_start(0, {-> s:DoAddVirtualTextBatch(entries)})
+  elseif data.method == 'get_annotations'
+    call timer_start(0, {-> s:DoGetAnnotations()})
   endif
 endfunction
 
@@ -163,6 +165,46 @@ function! vim_q_connect#clear_virtual_text()
   catch
   endtry
   echo "Q Connect virtual text cleared"
+endfunction
+
+" Get annotations at current cursor position
+function! s:DoGetAnnotations()
+  if g:mcp_channel == v:null || ch_status(g:mcp_channel) != 'open'
+    return
+  endif
+  
+  let current_line = line('.')
+  let annotations = []
+  
+  " Get all text properties at current line
+  let prop_types = ['q_connect', 'q_connect_warning', 'q_connect_error', 'q_connect_add', 'q_connect_qtext']
+  
+  for prop_type in prop_types
+    let props = prop_list(current_line, {'type': prop_type})
+    for prop in props
+      if has_key(prop, 'text')
+        call add(annotations, {
+          \ 'type': prop_type,
+          \ 'text': prop.text,
+          \ 'line': current_line
+        \ })
+      endif
+    endfor
+  endfor
+  
+  " Send response back to MCP server
+  let response = {
+    \ "method": "annotations_response",
+    \ "params": {
+      \ "annotations": annotations,
+      \ "line": current_line
+    \ }
+  \ }
+  
+  try
+    call ch_sendraw(g:mcp_channel, json_encode(response) . "\n")
+  catch
+  endtry
 endfunction
 
 " Send current editor context to Q CLI MCP server

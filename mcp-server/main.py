@@ -59,6 +59,7 @@ def handle_vim_message(message):
     Handles two types of messages:
     - context_update: Updates the current editor context with file/cursor state
     - disconnect: Marks the Vim connection as disconnected
+    - annotations_response: Returns annotations at current position
     
     Args:
         message: JSON string containing method and params
@@ -89,6 +90,13 @@ def handle_vim_message(message):
         elif data.get('method') == 'disconnect':
             vim_connected = False
             logger.info("Vim explicitly disconnected")
+        elif data.get('method') == 'annotations_response':
+            annotations = data.get('params', {}).get('annotations', [])
+            logger.info(f"Received {len(annotations)} annotations from Vim")
+            # Log the annotations for now - in a real implementation, 
+            # this would be returned to the MCP client
+            for ann in annotations:
+                logger.info(f"  Annotation: {ann}")
     except Exception as e:
         logger.error(f"Error handling Vim message: {e}")
 
@@ -324,6 +332,35 @@ def add_virtual_text(entries: list[dict]) -> str:
     except Exception as e:
         logger.error(f"Error sending batch virtual text command: {e}")
         return f"Error sending batch virtual text command: {e}"
+
+@mcp.tool()
+def get_annotations_above_current_position() -> str:
+    """Get all text property annotations above the current cursor position.
+    
+    Returns all virtual text annotations (text props) that are displayed above
+    the line where the cursor is currently positioned in Vim.
+    
+    Returns:
+        JSON string containing list of annotations with their text content and metadata
+    """
+    global vim_channel
+    
+    if not vim_channel:
+        return "Vim not connected to MCP socket"
+    
+    try:
+        command = {
+            "method": "get_annotations",
+            "params": {}
+        }
+        
+        logger.info("Requesting annotations at current position")
+        message = json.dumps(command) + '\n'
+        vim_channel.send(message.encode())
+        return "Annotation request sent"
+    except Exception as e:
+        logger.error(f"Error requesting annotations: {e}")
+        return f"Error requesting annotations: {e}"
 
 if __name__ == "__main__":
     mcp.run()
