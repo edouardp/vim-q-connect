@@ -121,7 +121,7 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
   
   for prop in existing_props
     if has_key(prop, 'text') && stridx(prop.text, a:text) >= 0
-      return  " Skip if similar text already exists
+      return
     endif
   endfor
   
