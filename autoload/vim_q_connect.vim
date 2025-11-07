@@ -127,6 +127,7 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
   
   " Use provided emoji or default to fullwidth Q
   let display_emoji = empty(a:emoji) ? 'Ｑ' : a:emoji
+  echo "DoAddVirtualText: emoji='" . a:emoji . "' display_emoji='" . display_emoji . "'"
   
   " Split text on newlines for multi-line virtual text
   let lines = split(a:text, '\n', 1)
