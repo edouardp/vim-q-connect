@@ -30,6 +30,9 @@ function! HandleMCPMessage(channel, msg)
   elseif data.method == 'add_virtual_text_batch'
     let entries = data.params.entries
     call timer_start(0, {-> s:DoAddVirtualTextBatch(entries)})
+  elseif data.method == 'add_to_quickfix'
+    let entries = data.params.entries
+    call timer_start(0, {-> s:DoAddToQuickfix(entries)})
   elseif data.method == 'get_annotations'
     let request_id = get(data, 'request_id', '')
     call timer_start(0, {-> s:DoGetAnnotations(request_id)})
@@ -464,5 +467,95 @@ function! s:FindLineByText(line_text)
       return i
     endif
   endfor
+  return 0  " Not found
+endfunction
+
+" Add multiple entries to quickfix list
+function! s:DoAddToQuickfix(entries)
+  let qf_list = []
+  let current_file = expand('%:p')
+  let skipped = 0
+  
+  for entry in a:entries
+    " Validate required field
+    if !has_key(entry, 'text')
+      let skipped += 1
+      continue
+    endif
+    
+    " Get filename first - use provided or current file, expand to full path
+    if has_key(entry, 'filename')
+      let filename = fnamemodify(entry.filename, ':p')
+    else
+      let filename = current_file
+    endif
+    
+    " Determine line number - support both 'line_number' and 'line' keys
+    if has_key(entry, 'line_number')
+      let line_num = entry.line_number
+    elseif has_key(entry, 'line') && type(entry.line) == v:t_number
+      let line_num = entry.line
+    elseif has_key(entry, 'line') && type(entry.line) == v:t_string
+      " Search for the line text in the target file
+      let line_num = s:FindLineByTextInFile(entry.line, filename)
+      if line_num == 0
+        let skipped += 1
+        continue  " Skip if line not found
+      endif
+    else
+      let skipped += 1
+      continue  " Skip entry if no valid line specification
+    endif
+    
+    " Get entry type - E (error), W (warning), I (info), N (note)
+    let entry_type = get(entry, 'type', 'I')
+    
+    " Build quickfix entry
+    call add(qf_list, {
+      \ 'filename': filename,
+      \ 'lnum': line_num,
+      \ 'text': entry.text,
+      \ 'type': entry_type
+    \ })
+  endfor
+  
+  " Add to quickfix list
+  if !empty(qf_list)
+    call setqflist(qf_list, 'a')
+    " Only open if not already open
+    if empty(filter(getwininfo(), 'v:val.quickfix'))
+      copen
+    endif
+    echo printf("Added %d entries to quickfix%s", len(qf_list), skipped > 0 ? printf(" (%d skipped)", skipped) : "")
+  elseif skipped > 0
+    echohl WarningMsg | echo printf("All %d entries skipped - no valid entries", skipped) | echohl None
+  endif
+endfunction
+
+" Find line number by searching for text in a specific file
+function! s:FindLineByTextInFile(line_text, filename)
+  " If it's the current file, search directly
+  if a:filename == expand('%:p')
+    return s:FindLineByText(a:line_text)
+  endif
+  
+  " Get or create buffer for the file
+  let bufnr = bufnr(a:filename)
+  if bufnr == -1
+    " Buffer doesn't exist, create it
+    let bufnr = bufadd(a:filename)
+  endif
+  
+  " Load buffer content without displaying it
+  call bufload(bufnr)
+  
+  " Search through buffer lines
+  let lines = getbufline(bufnr, 1, '$')
+  for i in range(len(lines))
+    if lines[i] ==# a:line_text
+      return i + 1  " Line numbers are 1-indexed
+    endif
+  endfor
+  
   return 0  " Not found
 endfunction

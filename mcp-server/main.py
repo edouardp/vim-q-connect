@@ -344,6 +344,49 @@ def add_virtual_text(entries: list[dict]) -> str:
         return f"Error sending batch virtual text command: {e}"
 
 @mcp.tool()
+def add_to_quickfix(entries: list[dict]) -> str:
+    """Add multiple entries to Vim's quickfix list for navigation and issue tracking.
+    
+    Use this tool when you have findings that users should navigate through, such as:
+    - Compilation errors or warnings
+    - Linting issues
+    - Test failures
+    - Code review findings
+    - Security vulnerabilities
+    - Performance bottlenecks
+    
+    Args:
+        entries: List of dictionaries, each containing:
+            - line (str): Exact text content of the line to search for (preferred)
+            - line_number (int): Alternative to line. 1-indexed line number
+            - text (str): Description of the issue or finding
+            - filename (str, optional): File path (defaults to current file)
+            - type (str, optional): Entry type - 'E' (error), 'W' (warning), 'I' (info), 'N' (note)
+    
+    Example:
+        add_to_quickfix([
+            {"line": "def process_data(input):", "text": "Missing input validation", "type": "E"},
+            {"line_number": 45, "text": "Performance issue: O(n²) complexity", "type": "W"}
+        ])
+    """
+    global vim_channel
+    
+    if not vim_connected:
+        return "Vim not connected to MCP socket"
+    
+    try:
+        request_queue.put(('add_to_quickfix', {
+            "method": "add_to_quickfix",
+            "params": {"entries": entries}
+        }))
+        
+        return f"Added {len(entries)} entries to quickfix list"
+    except Exception as e:
+        logger.error(f"Error sending quickfix command: {e}")
+        return f"Error sending quickfix command: {e}"
+        return f"Error sending quickfix command: {e}"
+
+@mcp.tool()
 def get_annotations_above_current_position() -> str:
     """Get all text property annotations above the current cursor position.
     
