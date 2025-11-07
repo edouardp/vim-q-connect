@@ -163,7 +163,6 @@ function! vim_q_connect#clear_virtual_text()
     call prop_remove({'type': 'q_virtual_text', 'all': 1})
   catch
   endtry
-  echo "Q Connect virtual text cleared"
 endfunction
 
 " Get annotations at current cursor position
@@ -593,7 +592,6 @@ function! s:DoAddToQuickfix(entries)
     call vim_q_connect#quickfix_annotate()
     " Set up autocmd for future annotations now that quickfix exists
     call s:SetupQuickfixAutocmd()
-    echo printf("Added %d entries to quickfix%s", len(qf_list), skipped > 0 ? printf(" (%d skipped)", skipped) : "")
   elseif skipped > 0
     echohl WarningMsg | echo printf("All %d entries skipped - no valid entries", skipped) | echohl None
   endif
@@ -686,8 +684,4 @@ function! vim_q_connect#quickfix_annotate()
       endif
     endif
   endfor
-  
-  if annotated > 0
-    echo "Annotated " . annotated . " quickfix entries across all buffers"
-  endif
 endfunction
