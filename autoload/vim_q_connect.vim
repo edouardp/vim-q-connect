@@ -484,6 +484,8 @@ function! s:DoAddToQuickfix(entries)
   let current_file = expand('%:p')
   let skipped = 0
   
+  " First pass: resolve line numbers and build entries
+  let resolved_entries = []
   for entry in a:entries
     " Validate required field
     if !has_key(entry, 'text')
@@ -518,12 +520,26 @@ function! s:DoAddToQuickfix(entries)
     " Get entry type - E (error), W (warning), I (info), N (note)
     let entry_type = get(entry, 'type', 'I')
     
-    " Build quickfix entry
-    call add(qf_list, {
+    " Add to resolved entries with sort key
+    call add(resolved_entries, {
       \ 'filename': filename,
       \ 'lnum': line_num,
       \ 'text': entry.text,
-      \ 'type': entry_type
+      \ 'type': entry_type,
+      \ 'sort_key': filename . ':' . printf('%08d', line_num)
+    \ })
+  endfor
+  
+  " Second pass: sort by filename then line number
+  call sort(resolved_entries, {a, b -> a.sort_key ==# b.sort_key ? 0 : a.sort_key > b.sort_key ? 1 : -1})
+  
+  " Third pass: build final quickfix list
+  for entry in resolved_entries
+    call add(qf_list, {
+      \ 'filename': entry.filename,
+      \ 'lnum': entry.lnum,
+      \ 'text': entry.text,
+      \ 'type': entry.type
     \ })
   endfor
   
@@ -534,6 +550,8 @@ function! s:DoAddToQuickfix(entries)
     if empty(filter(getwininfo(), 'v:val.quickfix'))
       copen
     endif
+    " Auto-annotate current buffer after adding entries
+    call vim_q_connect#quickfix_annotate()
     echo printf("Added %d entries to quickfix%s", len(qf_list), skipped > 0 ? printf(" (%d skipped)", skipped) : "")
   elseif skipped > 0
     echohl WarningMsg | echo printf("All %d entries skipped - no valid entries", skipped) | echohl None
