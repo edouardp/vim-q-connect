@@ -36,6 +36,9 @@ function! HandleMCPMessage(channel, msg)
   elseif data.method == 'get_annotations'
     let request_id = get(data, 'request_id', '')
     call timer_start(0, {-> s:DoGetAnnotations(request_id)})
+  elseif data.method == 'get_current_quickfix'
+    let request_id = get(data, 'request_id', '')
+    call timer_start(0, {-> s:DoGetCurrentQuickfix(request_id)})
   endif
 endfunction
 
@@ -157,6 +160,45 @@ endfunction
 " Clear all Q Connect virtual text
 function! vim_q_connect#clear_virtual_text()
   call prop_remove({'type': 'q_virtual_text', 'all': 1})
+endfunction
+
+" Get current quickfix entry
+function! s:DoGetCurrentQuickfix(request_id)
+  if g:mcp_channel == v:null || ch_status(g:mcp_channel) != 'open'
+    return
+  endif
+  
+  " Get current quickfix index
+  let qf_info = getqflist({'idx': 0, 'items': 1})
+  let current_idx = qf_info.idx
+  
+  if current_idx == 0 || empty(qf_info.items)
+    " No quickfix list or empty
+    let response = {
+      \ "method": "quickfix_entry_response",
+      \ "request_id": a:request_id,
+      \ "params": {
+        \ "error": "No quickfix entries available"
+      \ }
+    \ }
+  else
+    let entry = qf_info.items[current_idx - 1]
+    let response = {
+      \ "method": "quickfix_entry_response",
+      \ "request_id": a:request_id,
+      \ "params": {
+        \ "text": entry.text,
+        \ "filename": bufname(entry.bufnr),
+        \ "line_number": entry.lnum,
+        \ "type": get(entry, 'type', 'I')
+      \ }
+    \ }
+  endif
+  
+  try
+    call ch_sendraw(g:mcp_channel, json_encode(response) . "\n")
+  catch
+  endtry
 endfunction
 
 " Get annotations at current cursor position

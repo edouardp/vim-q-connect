@@ -102,6 +102,13 @@ def handle_vim_message(message):
             # Put response in the correct queue
             if request_id and request_id in response_queues:
                 response_queues[request_id].put(('annotations', annotations))
+        elif data.get('method') == 'quickfix_entry_response':
+            params = data.get('params', {})
+            request_id = data.get('request_id')
+            logger.info(f"Received quickfix entry from Vim (request_id: {request_id})")
+            # Put response in the correct queue
+            if request_id and request_id in response_queues:
+                response_queues[request_id].put(('quickfix_entry', params))
     except Exception as e:
         logger.error(f"Error handling Vim message: {e}")
 
@@ -383,6 +390,56 @@ def add_to_quickfix(entries: list[dict]) -> str:
         logger.error(f"Error sending quickfix command: {e}")
         return f"Error sending quickfix command: {e}"
         return f"Error sending quickfix command: {e}"
+
+@mcp.tool()
+def get_current_quickfix_entry() -> dict:
+    """Get the current quickfix entry that the user is focused on.
+    
+    Use this tool when the user says "fix this", "fix this issue", "fix this quickfix issue",
+    or any reference to fixing the current problem they're looking at.
+    
+    Returns:
+        Dictionary containing:
+        - text: The full quickfix entry text (may be multi-line)
+        - filename: The file path
+        - line_number: The line number in the file
+        - type: Error level ('E' for error, 'W' for warning, 'I' for info, 'N' for note)
+        - error: Error message if quickfix is empty or Vim not connected
+    """
+    global request_queue, response_queues
+    
+    if not vim_connected:
+        return {"error": "Vim not connected to MCP socket"}
+    
+    try:
+        # Create unique request ID and response queue
+        request_id = str(uuid.uuid4())
+        response_queue = queue.Queue()
+        response_queues[request_id] = response_queue
+        
+        # Put request in queue for server thread to send
+        request_queue.put(('get_current_quickfix', {
+            "method": "get_current_quickfix",
+            "request_id": request_id,
+            "params": {}
+        }))
+        
+        # Wait for response
+        try:
+            response_type, data = response_queue.get(timeout=5.0)
+            if response_type == 'quickfix_entry':
+                return data
+            else:
+                return {"error": f"Unexpected response type: {response_type}"}
+        except queue.Empty:
+            return {"error": "Timeout waiting for quickfix entry response"}
+        finally:
+            # Clean up response queue
+            del response_queues[request_id]
+            
+    except Exception as e:
+        logger.error(f"Error requesting quickfix entry: {e}")
+        return {"error": f"Error requesting quickfix entry: {e}"}
 
 @mcp.tool()
 def get_annotations_above_current_position() -> str:
