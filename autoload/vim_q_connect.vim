@@ -94,9 +94,9 @@ endfunction
 " Initialize property types for virtual text
 function! s:InitPropTypes()
   try
-    call prop_type_get('q_connect_qtext')
+    call prop_type_get('q_virtual_text')
   catch
-    call prop_type_add('q_connect_qtext', {'highlight': 'qtext'})
+    call prop_type_add('q_virtual_text', {'highlight': 'qtext'})
   endtry
 endfunction
 
@@ -105,7 +105,7 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
   call s:InitPropTypes()
   
   " Always use qtext highlight (ignore passed highlight parameter)
-  let l:prop_type = 'q_connect_qtext'
+  let l:prop_type = 'q_virtual_text'
   
   " Check for existing props with same text to avoid duplicates
   let existing_props = prop_list(a:line_num, {'type': l:prop_type})
@@ -147,23 +147,7 @@ endfunction
 " Clear all Q Connect virtual text
 function! vim_q_connect#clear_virtual_text()
   try
-    call prop_remove({'type': 'q_connect', 'all': 1})
-  catch
-  endtry
-  try
-    call prop_remove({'type': 'q_connect_warning', 'all': 1})
-  catch
-  endtry
-  try
-    call prop_remove({'type': 'q_connect_error', 'all': 1})
-  catch
-  endtry
-  try
-    call prop_remove({'type': 'q_connect_add', 'all': 1})
-  catch
-  endtry
-  try
-    call prop_remove({'type': 'q_connect_qtext', 'all': 1})
+    call prop_remove({'type': 'q_virtual_text', 'all': 1})
   catch
   endtry
   echo "Q Connect virtual text cleared"
@@ -182,7 +166,7 @@ function! s:DoGetAnnotations(request_id)
   
   " Check lines above current position
   for line_num in range(max([1, current_line - 20]), current_line - 1)
-    let props = prop_list(line_num, {'type': 'q_connect_qtext'})
+    let props = prop_list(line_num, {'type': 'q_virtual_text'})
     if !empty(props)
       let distance = current_line - line_num
       if distance < closest_distance
