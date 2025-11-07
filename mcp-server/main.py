@@ -310,17 +310,15 @@ def add_virtual_text(entries: list[dict]) -> str:
         entries: List of dictionaries, each containing:
             - line (str): Exact text content of the line to search for. Use this line argument in preference to line_number because it's more robust - annotations stay correct even if line numbers shift due to edits.
             - line_number (int): Alternative to line. 1-indexed line number to add virtual text above. Don't use the line_number argument unless the line is absolutely known, e.g. from an immediately preceeding get_editor_context tool call.
-            - text (str): The annotation text to display (supports multi-line with \n)
+            - text (str): The annotation text to display (supports multi-line with \n). If text starts with emoji, it will be extracted as the display emoji.
             - highlight (str, optional): Vim highlight group (ignored for now - will always uses qtext styling)
             - emoji (str, optional): Single emoji character for visual emphasis (defaults to Ｑ)
     
     Example:
         add_virtual_text_batch([
-            {"line_number": 10, "text": "SECURITY: Validate input here", "highlight": "WarningMsg", "emoji": "🔒"},
-            {"line": "def my_function():", "text": "PERFORMANCE: Consider caching this result\nThis function is called frequently", "highlight": "qtext"}
+            {"line_number": 10, "text": "🔒 SECURITY: Validate input here", "highlight": "WarningMsg"},
+            {"line": "def my_function():", "text": "PERFORMANCE: Consider caching this result\nThis function is called frequently", "emoji": "⚡"}
         ])
-
-    If you are sending the optional emoji field, don't send the same emoji on the first line of the text.
 
     Use optional emoji sparingly - only when it adds semantic meaning.
 
@@ -333,9 +331,26 @@ def add_virtual_text(entries: list[dict]) -> str:
         return "Vim not connected to MCP socket"
     
     try:
+        # Process entries to extract emojis from text
+        processed_entries = []
+        for entry in entries:
+            processed_entry = entry.copy()
+            text = entry.get('text', '')
+            
+            # Extract emoji from start of text if no emoji provided
+            if text and 'emoji' not in entry:
+                import re
+                # Match emoji at start of string
+                emoji_match = re.match(r'^(\p{So}|\p{Sk})\s*', text)
+                if emoji_match:
+                    processed_entry['emoji'] = emoji_match.group(1)
+                    processed_entry['text'] = text[emoji_match.end():]
+            
+            processed_entries.append(processed_entry)
+        
         request_queue.put(('add_virtual_text_batch', {
             "method": "add_virtual_text_batch",
-            "params": {"entries": entries}
+            "params": {"entries": processed_entries}
         }))
         
         return f"Batch virtual text added: {len(entries)} entries"

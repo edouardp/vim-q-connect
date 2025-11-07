@@ -430,6 +430,20 @@ function! s:DoAddVirtualTextBatch(entries)
       continue
     endif
     
+    " Extract emoji from text if not provided
+    let text = entry.text
+    let emoji = get(entry, 'emoji', '')
+    
+    if empty(emoji) && !empty(text)
+      " Check if text starts with emoji
+      let first_char = strpart(text, 0, 1)
+      if char2nr(first_char) > 127  " Non-ASCII, likely emoji
+        let emoji = first_char
+        " Remove emoji and following whitespace from text
+        let text = substitute(text, '^.\s*', '', '')
+      endif
+    endif
+    
     " Find line by text content
     let line_matches = s:FindAllLinesByText(entry.line)
     let line_num = 0
@@ -465,9 +479,7 @@ function! s:DoAddVirtualTextBatch(entries)
       endif
     endif
     
-    let text = entry.text
     let highlight = get(entry, 'highlight', 'Comment')
-    let emoji = get(entry, 'emoji', '')
     call s:DoAddVirtualText(line_num, text, highlight, emoji)
   endfor
 endfunction
