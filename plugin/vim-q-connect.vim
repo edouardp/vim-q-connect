@@ -11,11 +11,11 @@ highlight qtext ctermbg=237 ctermfg=250 cterm=italic guibg=#2a2a2a guifg=#d0d0d0
 
 " Socket path will be determined at connection time if not set
 
-" Auto-annotate quickfix entries when opening files
-augroup QQuickfixAnnotate
-  autocmd!
-  autocmd BufEnter * if !empty(getqflist()) | call vim_q_connect#quickfix_annotate() | endif
-augroup END
+" Auto-annotate quickfix entries when opening files (disabled due to property type issues)
+" augroup QQuickfixAnnotate
+"   autocmd!
+"   autocmd BufEnter * if !empty(getqflist()) | call vim_q_connect#quickfix_annotate() | endif
+" augroup END
 
 " Commands
 command! -bang QConnect if <bang>0 | call vim_q_connect#stop_tracking() | else | call vim_q_connect#start_tracking() | endif

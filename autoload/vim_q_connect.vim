@@ -605,6 +605,8 @@ function! s:DoAddToQuickfix(entries)
     endif
     " Auto-annotate current buffer after adding entries
     call vim_q_connect#quickfix_annotate()
+    " Set up autocmd for future annotations now that quickfix exists
+    call s:SetupQuickfixAutocmd()
     echo printf("Added %d entries to quickfix%s", len(qf_list), skipped > 0 ? printf(" (%d skipped)", skipped) : "")
   elseif skipped > 0
     echohl WarningMsg | echo printf("All %d entries skipped - no valid entries", skipped) | echohl None
@@ -639,6 +641,20 @@ function! s:FindAllLinesByTextInFile(line_text, filename)
   endfor
   
   return matches
+endfunction
+
+" Set up autocmd for quickfix annotations after first quickfix list is created
+function! s:SetupQuickfixAutocmd()
+  " Only set up once
+  if exists('g:quickfix_autocmd_setup')
+    return
+  endif
+  let g:quickfix_autocmd_setup = 1
+  
+  augroup QQuickfixAnnotate
+    autocmd!
+    autocmd BufEnter * if !empty(getqflist()) | call vim_q_connect#quickfix_annotate() | endif
+  augroup END
 endfunction
 
 " Find all line numbers by searching for text content in current buffer
