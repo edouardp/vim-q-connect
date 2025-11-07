@@ -15,22 +15,43 @@ let g:visual_end = 0          " End line of visual selection (0 = no selection)
 " Handle incoming MCP messages from Q CLI
 " Currently supports 'goto_line' method for navigation commands
 function! HandleMCPMessage(channel, msg)
-  let data = json_decode(a:msg)
+  try
+    let data = json_decode(a:msg)
+  catch
+    echohl ErrorMsg | echo 'Invalid JSON from MCP' | echohl None
+    return
+  endtry
+  
+  if !has_key(data, 'method')
+    return
+  endif
   
   if data.method == 'goto_line'
+    if !has_key(data, 'params') || !has_key(data.params, 'line')
+      return
+    endif
     let line_num = data.params.line
     let filename = get(data.params, 'filename', '')
     call timer_start(0, {-> s:DoGotoLine(line_num, filename)})
   elseif data.method == 'add_virtual_text'
+    if !has_key(data, 'params') || !has_key(data.params, 'line') || !has_key(data.params, 'text')
+      return
+    endif
     let line_num = data.params.line
     let text = data.params.text
     let highlight = get(data.params, 'highlight', 'Comment')
     let emoji = get(data.params, 'emoji', '')
     call timer_start(0, {-> s:DoAddVirtualText(line_num, text, highlight, emoji)})
   elseif data.method == 'add_virtual_text_batch'
+    if !has_key(data, 'params') || !has_key(data.params, 'entries')
+      return
+    endif
     let entries = data.params.entries
     call timer_start(0, {-> s:DoAddVirtualTextBatch(entries)})
   elseif data.method == 'add_to_quickfix'
+    if !has_key(data, 'params') || !has_key(data.params, 'entries')
+      return
+    endif
     let entries = data.params.entries
     call timer_start(0, {-> s:DoAddToQuickfix(entries)})
   elseif data.method == 'get_annotations'

@@ -19,6 +19,11 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.tox/
 
 # Virtual environments
 .env
