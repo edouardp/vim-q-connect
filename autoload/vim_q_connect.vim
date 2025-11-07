@@ -643,30 +643,41 @@ endfunction
 function! vim_q_connect#quickfix_annotate()
   let qf_list = getqflist()
   let annotated = 0
+  let current_buf = bufnr('%')
+  
+  " Get list of buffers in windows
+  let window_buffers = []
+  for winnr in range(1, winnr('$'))
+    call add(window_buffers, winbufnr(winnr))
+  endfor
   
   for entry in qf_list
     if has_key(entry, 'bufnr') && has_key(entry, 'lnum') && has_key(entry, 'text')
-      " Use emoji from user_data if available, otherwise fall back to type-based emoji
-      let emoji = ''
-      if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji')
-        let emoji = entry.user_data.emoji
-      else
-        let emoji = entry.type ==# 'E' ? '❌' : entry.type ==# 'W' ? '⚠️' : '💡'
-      endif
-      
-      " Switch to the buffer temporarily to add virtual text
-      let current_buf = bufnr('%')
-      if entry.bufnr != current_buf
-        execute 'buffer ' . entry.bufnr
-      endif
-      
-      call s:DoAddVirtualText(entry.lnum, entry.text, 'Comment', emoji)
-      let annotated += 1
-      
-      " Switch back to original buffer if we changed
-      if entry.bufnr != current_buf
-        execute 'buffer ' . current_buf
+      " Only annotate entries for buffers that are open in windows
+      if index(window_buffers, entry.bufnr) >= 0
+        " Use emoji from user_data if available, otherwise fall back to type-based emoji
+        let emoji = ''
+        if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji')
+          let emoji = entry.user_data.emoji
+        else
+          let emoji = entry.type ==# 'E' ? '❌' : entry.type ==# 'W' ? '⚠️' : '💡'
+        endif
+        
+        " Switch to the buffer temporarily to add virtual text
+        if entry.bufnr != current_buf
+          execute 'buffer ' . entry.bufnr
+        endif
+        
+        call s:DoAddVirtualText(entry.lnum, entry.text, 'Comment', emoji)
+        let annotated += 1
+        
+        " Switch back to original buffer if we changed
+        if entry.bufnr != current_buf
+          execute 'buffer ' . current_buf
+        endif
       endif
     endif
   endfor
+  
+  echo "Annotated " . annotated . " quickfix entries in open buffers"
 endfunction
