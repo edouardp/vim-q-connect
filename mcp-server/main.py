@@ -331,26 +331,9 @@ def add_virtual_text(entries: list[dict]) -> str:
         return "Vim not connected to MCP socket"
     
     try:
-        # Process entries to extract emojis from text
-        processed_entries = []
-        for entry in entries:
-            processed_entry = entry.copy()
-            text = entry.get('text', '')
-            
-            # Extract emoji from start of text if no emoji provided
-            if text and 'emoji' not in entry:
-                import re
-                # Match emoji at start of string
-                emoji_match = re.match(r'^(\p{So}|\p{Sk})\s*', text)
-                if emoji_match:
-                    processed_entry['emoji'] = emoji_match.group(1)
-                    processed_entry['text'] = text[emoji_match.end():]
-            
-            processed_entries.append(processed_entry)
-        
         request_queue.put(('add_virtual_text_batch', {
             "method": "add_virtual_text_batch",
-            "params": {"entries": processed_entries}
+            "params": {"entries": entries}
         }))
         
         return f"Batch virtual text added: {len(entries)} entries"
