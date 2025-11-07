@@ -27,6 +27,8 @@ import socket
 import json
 import threading
 import logging
+import queue
+import uuid
 from pathlib import Path
 from fastmcp import FastMCP
 
@@ -40,6 +42,8 @@ mcp = FastMCP("vim-context")
 socket_server = None
 vim_channel = None
 vim_connected = False
+request_queue = queue.Queue()
+response_queues = {}  # request_id -> queue
 current_context = {
     "context": "No context available",
     "filename": "",
@@ -92,11 +96,11 @@ def handle_vim_message(message):
             logger.info("Vim explicitly disconnected")
         elif data.get('method') == 'annotations_response':
             annotations = data.get('params', {}).get('annotations', [])
-            logger.info(f"Received {len(annotations)} annotations from Vim")
-            # Log the annotations for now - in a real implementation, 
-            # this would be returned to the MCP client
-            for ann in annotations:
-                logger.info(f"  Annotation: {ann}")
+            request_id = data.get('request_id')
+            logger.info(f"Received {len(annotations)} annotations from Vim (request_id: {request_id})")
+            # Put response in the correct queue
+            if request_id and request_id in response_queues:
+                response_queues[request_id].put(('annotations', annotations))
     except Exception as e:
         logger.error(f"Error handling Vim message: {e}")
 
@@ -131,33 +135,48 @@ def start_socket_server():
                     buffer = ""
                     while True:
                         try:
-                            data = conn.recv(4096).decode()
-                            if not data:
-                                vim_connected = False
-                                logger.info("Vim disconnected from MCP socket")
-                                break
+                            # Check for outgoing requests first
+                            try:
+                                request_type, request_data = request_queue.get_nowait()
+                                message = json.dumps(request_data) + '\n'
+                                conn.send(message.encode())
+                                logger.info(f"Sent {request_type} request to Vim")
+                            except queue.Empty:
+                                pass
                             
-                            buffer += data
-                            logger.info(f"Received data from Vim: {data}")
-                            
-                            # Handle complete messages
-                            while buffer:
-                                try:
-                                    # Try to parse as complete JSON
-                                    message = json.loads(buffer)
-                                    handle_vim_message(json.dumps(message))
-                                    buffer = ""
+                            # Then check for incoming data
+                            conn.settimeout(0.1)  # Non-blocking with short timeout
+                            try:
+                                data = conn.recv(4096).decode()
+                                if not data:
+                                    vim_connected = False
+                                    logger.info("Vim disconnected from MCP socket")
                                     break
-                                except json.JSONDecodeError:
-                                    # Look for newline-delimited messages
-                                    if '\n' in buffer:
-                                        line, buffer = buffer.split('\n', 1)
-                                        if line.strip():
-                                            handle_vim_message(line.strip())
-                                    else:
+                                
+                                buffer += data
+                                logger.info(f"Received data from Vim: {data}")
+                                
+                                # Handle complete messages
+                                while buffer:
+                                    try:
+                                        # Try to parse as complete JSON
+                                        message = json.loads(buffer)
+                                        handle_vim_message(json.dumps(message))
+                                        buffer = ""
                                         break
+                                    except json.JSONDecodeError:
+                                        # Look for newline-delimited messages
+                                        if '\n' in buffer:
+                                            line, buffer = buffer.split('\n', 1)
+                                            if line.strip():
+                                                handle_vim_message(line.strip())
+                                        else:
+                                            break
+                            except socket.timeout:
+                                pass  # Continue loop to check request queue
+                                
                         except Exception as e:
-                            logger.error(f"Error receiving from Vim: {e}")
+                            logger.error(f"Error in Vim communication: {e}")
                             vim_connected = False
                             break
                 
@@ -206,25 +225,20 @@ def get_editor_context() -> dict:
 @mcp.tool()
 def goto_line(line_number: int, filename: str = "") -> str:
     """Navigate to a specific line in Vim."""
-    global vim_channel
+    global request_queue
     
-    if not vim_channel:
+    if not vim_connected:
         return "Vim not connected to MCP socket"
     
     try:
-        command = {
+        request_queue.put(('goto_line', {
             "method": "goto_line",
             "params": {
                 "line": line_number,
                 "filename": filename
             }
-        }
+        }))
         
-        logger.info(f"Sending goto_line command: {command}")
-        # Send as raw JSON string with newline delimiter
-        message = json.dumps(command) + '\n'
-        vim_channel.send(message.encode())
-        logger.info(f"Command sent successfully")
         return f"Navigation command sent: line {line_number}" + (f" in {filename}" if filename else "")
     except Exception as e:
         logger.error(f"Error sending navigation command: {e}")
@@ -316,18 +330,15 @@ def add_virtual_text(entries: list[dict]) -> str:
     """
     global vim_channel
     
-    if not vim_channel:
+    if not vim_connected:
         return "Vim not connected to MCP socket"
     
     try:
-        command = {
+        request_queue.put(('add_virtual_text_batch', {
             "method": "add_virtual_text_batch",
             "params": {"entries": entries}
-        }
+        }))
         
-        logger.info(f"Sending batch virtual text command: {len(entries)} entries")
-        message = json.dumps(command) + '\n'
-        vim_channel.send(message.encode())
         return f"Batch virtual text added: {len(entries)} entries"
     except Exception as e:
         logger.error(f"Error sending batch virtual text command: {e}")
@@ -343,25 +354,37 @@ def get_annotations_above_current_position() -> str:
     Returns:
         JSON string containing list of annotations with their text content and metadata
     """
-    global vim_channel
+    global request_queue, response_queues
     
-    if not vim_channel:
+    if not vim_connected:
         return "Vim not connected to MCP socket"
     
     try:
-        command = {
-            "method": "get_annotations",
-            "params": {}
-        }
+        # Create unique request ID and response queue
+        request_id = str(uuid.uuid4())
+        response_queue = queue.Queue()
+        response_queues[request_id] = response_queue
         
-        logger.info("Requesting annotations at current position")
-        message = json.dumps(command) + '\n'
-        vim_channel.send(message.encode())
+        # Put request in queue for server thread to send
+        request_queue.put(('get_annotations', {
+            "method": "get_annotations",
+            "request_id": request_id,
+            "params": {}
+        }))
         
         # Wait for response
-        response_data = vim_channel.recv(4096).decode()
-        logger.info(f"Received annotations response: {response_data}")
-        return response_data
+        try:
+            response_type, annotations = response_queue.get(timeout=5.0)
+            if response_type == 'annotations':
+                return json.dumps(annotations)
+            else:
+                return f"Unexpected response type: {response_type}"
+        except queue.Empty:
+            return "Timeout waiting for annotations response"
+        finally:
+            # Clean up response queue
+            del response_queues[request_id]
+            
     except Exception as e:
         logger.error(f"Error requesting annotations: {e}")
         return f"Error requesting annotations: {e}"

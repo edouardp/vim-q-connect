@@ -31,7 +31,8 @@ function! HandleMCPMessage(channel, msg)
     let entries = data.params.entries
     call timer_start(0, {-> s:DoAddVirtualTextBatch(entries)})
   elseif data.method == 'get_annotations'
-    call timer_start(0, {-> s:DoGetAnnotations()})
+    let request_id = get(data, 'request_id', '')
+    call timer_start(0, {-> s:DoGetAnnotations(request_id)})
   endif
 endfunction
 
@@ -168,7 +169,7 @@ function! vim_q_connect#clear_virtual_text()
 endfunction
 
 " Get annotations at current cursor position
-function! s:DoGetAnnotations()
+function! s:DoGetAnnotations(request_id)
   if g:mcp_channel == v:null || ch_status(g:mcp_channel) != 'open'
     return
   endif
@@ -195,6 +196,7 @@ function! s:DoGetAnnotations()
   " Send response back to MCP server
   let response = {
     \ "method": "annotations_response",
+    \ "request_id": a:request_id,
     \ "params": {
       \ "annotations": annotations,
       \ "line": current_line
