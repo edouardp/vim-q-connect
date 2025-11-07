@@ -667,11 +667,19 @@ function! vim_q_connect#quickfix_annotate()
     if has_key(entry, 'bufnr') && has_key(entry, 'lnum') && has_key(entry, 'text')
       " Only annotate entries for buffers that are open in windows
       if index(window_buffers, entry.bufnr) >= 0
-        " Use emoji from user_data if available, otherwise fall back to type-based emoji
+        " Extract emoji from text and clean the text
+        let text = entry.text
         let emoji = ''
+        let first_char = strpart(text, 0, 1)
+        if char2nr(first_char) > 127  " Non-ASCII, likely emoji
+          let emoji = first_char
+          let text = substitute(text, '^.\s*', '', '')
+        endif
+        
+        " Use emoji from user_data if available, otherwise use extracted or type-based emoji
         if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji') && !empty(entry.user_data.emoji)
           let emoji = entry.user_data.emoji
-        else
+        elseif empty(emoji)
           let emoji = entry.type ==# 'E' ? '🔴' : entry.type ==# 'W' ? '🔶' : '🟢'
         endif
         
@@ -680,7 +688,7 @@ function! vim_q_connect#quickfix_annotate()
           execute 'buffer ' . entry.bufnr
         endif
         
-        call s:DoAddVirtualText(entry.lnum, entry.text, 'Comment', emoji)
+        call s:DoAddVirtualText(entry.lnum, text, 'Comment', emoji)
         let annotated += 1
         
         " Switch back to original buffer if we changed
