@@ -658,7 +658,7 @@ function! vim_q_connect#quickfix_annotate()
       if index(window_buffers, entry.bufnr) >= 0
         " Use emoji from user_data if available, otherwise fall back to type-based emoji
         let emoji = ''
-        if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji')
+        if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji') && !empty(entry.user_data.emoji)
           let emoji = entry.user_data.emoji
           echo "Using user_data emoji: " . emoji
         else
