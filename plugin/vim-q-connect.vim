@@ -14,3 +14,4 @@ highlight qtext ctermbg=237 ctermfg=250 cterm=italic guibg=#2a2a2a guifg=#d0d0d0
 " Commands
 command! -bang QConnect if <bang>0 | call vim_q_connect#stop_tracking() | else | call vim_q_connect#start_tracking() | endif
 command! QVirtualTextClear call vim_q_connect#clear_virtual_text()
+command! QQuickfixAnnotate call vim_q_connect#quickfix_annotate()

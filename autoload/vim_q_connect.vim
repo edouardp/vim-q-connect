@@ -559,3 +559,17 @@ function! s:FindLineByTextInFile(line_text, filename)
   
   return 0  " Not found
 endfunction
+
+" Annotate quickfix entries as virtual text
+function! vim_q_connect#quickfix_annotate()
+  let qf_list = getqflist()
+  
+  for entry in qf_list
+    if has_key(entry, 'bufnr') && bufloaded(entry.bufnr) && has_key(entry, 'lnum') && has_key(entry, 'text')
+      let emoji = entry.type ==# 'E' ? '❌' : entry.type ==# 'W' ? '⚠️' : '💡'
+      call s:DoAddVirtualText(entry.lnum, entry.text, 'Comment', emoji)
+    endif
+  endfor
+  
+  echo "Annotated " . len(qf_list) . " quickfix entries"
+endfunction
