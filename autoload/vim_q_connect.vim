@@ -93,21 +93,31 @@ endfunction
 
 " Initialize property types for virtual text
 function! s:InitPropTypes()
-  if empty(prop_type_get('q_connect'))
+  try
+    call prop_type_get('q_connect')
+  catch
     call prop_type_add('q_connect', {'highlight': 'Comment'})
-  endif
-  if empty(prop_type_get('q_connect_warning'))
+  endtry
+  try
+    call prop_type_get('q_connect_warning')
+  catch
     call prop_type_add('q_connect_warning', {'highlight': 'WarningMsg'})
-  endif
-  if empty(prop_type_get('q_connect_error'))
+  endtry
+  try
+    call prop_type_get('q_connect_error')
+  catch
     call prop_type_add('q_connect_error', {'highlight': 'ErrorMsg'})
-  endif
-  if empty(prop_type_get('q_connect_add'))
+  endtry
+  try
+    call prop_type_get('q_connect_add')
+  catch
     call prop_type_add('q_connect_add', {'highlight': 'DiffAdd'})
-  endif
-  if empty(prop_type_get('q_connect_qtext'))
+  endtry
+  try
+    call prop_type_get('q_connect_qtext')
+  catch
     call prop_type_add('q_connect_qtext', {'highlight': 'qtext', 'text_wrap': 'wrap'})
-  endif
+  endtry
 endfunction
 
 " Add virtual text above specified line
