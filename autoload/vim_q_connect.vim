@@ -93,19 +93,46 @@ endfunction
 
 " Initialize property types for virtual text
 function! s:InitPropTypes()
+  " Check if text properties are supported
+  if !has('textprop')
+    return
+  endif
+  
+  " Try to get existing property type, create if it doesn't exist
   try
-    call prop_type_get('q_virtual_text')
-  catch
+    let existing = prop_type_get('q_virtual_text')
+  catch /E971:/
+    " Property type doesn't exist, create it
     call prop_type_add('q_virtual_text', {'highlight': 'qtext'})
+  catch
+    " Other error, try to create anyway
+    try
+      call prop_type_add('q_virtual_text', {'highlight': 'qtext'})
+    catch
+      " If creation fails, we can't use virtual text
+    endtry
   endtry
 endfunction
 
 " Add virtual text above specified line
 function! s:DoAddVirtualText(line_num, text, highlight, emoji)
+  " Check if text properties are supported
+  if !has('textprop')
+    return
+  endif
+  
   call s:InitPropTypes()
   
   " Always use qtext highlight (ignore passed highlight parameter)
   let l:prop_type = 'q_virtual_text'
+  
+  " Verify property type exists before using it
+  try
+    call prop_type_get(l:prop_type)
+  catch
+    " Property type doesn't exist, skip virtual text
+    return
+  endtry
   
   " Check for existing props with same text to avoid duplicates
   let existing_props = prop_list(a:line_num, {'type': l:prop_type})
