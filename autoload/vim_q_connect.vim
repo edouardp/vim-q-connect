@@ -689,7 +689,50 @@ endfunction
 
 " Set up autocmd for quickfix annotations after first quickfix list is created
 function! s:SetupQuickfixAutocmd()
-  " Autocmd setup disabled - manual annotation only
+  augroup QQuickfixAnnotate
+    autocmd!
+    autocmd BufEnter * call s:AnnotateCurrentBuffer()
+  augroup END
+endfunction
+
+" Annotate quickfix entries for current buffer only
+function! s:AnnotateCurrentBuffer()
+  if empty(getqflist()) || &buftype != ''
+    return
+  endif
+  
+  let current_buf = bufnr('%')
+  let qf_list = getqflist()
+  
+  for entry in qf_list
+    if has_key(entry, 'bufnr') && entry.bufnr == current_buf && has_key(entry, 'lnum') && has_key(entry, 'text')
+      let text = entry.text
+      let emoji = ''
+      let idx = 0
+      while idx < strchars(text)
+        let char = strcharpart(text, idx, 1)
+        let codepoint = char2nr(char)
+        if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || (codepoint >= 0x2600 && codepoint <= 0x27BF)
+          let emoji .= char
+          let idx += 1
+        else
+          break
+        endif
+      endwhile
+      if !empty(emoji)
+        let text = strcharpart(text, strchars(emoji))
+        let text = substitute(text, '^\s\+', '', '')
+      endif
+      
+      if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji') && !empty(entry.user_data.emoji)
+        let emoji = entry.user_data.emoji
+      elseif empty(emoji)
+        let emoji = entry.type ==# 'E' ? '🔴' : entry.type ==# 'W' ? '🔶' : '🟢'
+      endif
+      
+      call s:DoAddVirtualText(entry.lnum, text, 'Comment', emoji)
+    endif
+  endfor
 endfunction
 
 " Find all line numbers by searching for text content in current buffer
