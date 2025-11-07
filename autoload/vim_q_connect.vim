@@ -477,11 +477,24 @@ function! s:DoAddVirtualTextBatch(entries)
     let emoji = get(entry, 'emoji', '')
     
     if empty(emoji) && !empty(text)
-      " Extract all leading emoji characters
-      let emoji = matchstr(text, '^[^\x00-\x7F]\+')
+      " Extract leading emoji by checking Unicode code points
+      let emoji = ''
+      let idx = 0
+      while idx < strchars(text)
+        let char = strcharpart(text, idx, 1)
+        let codepoint = char2nr(char)
+        " Check if in emoji ranges: U+1F300-U+1F9FF, U+2600-U+26FF, U+2700-U+27BF
+        if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || (codepoint >= 0x2600 && codepoint <= 0x27BF)
+          let emoji .= char
+          let idx += 1
+        else
+          break
+        endif
+      endwhile
       if !empty(emoji)
         " Remove emoji and following whitespace from text
-        let text = substitute(text, '^[^\x00-\x7F]\+\s*', '', '')
+        let text = strcharpart(text, strchars(emoji))
+        let text = substitute(text, '^\s\+', '', '')
       endif
     endif
     
@@ -711,10 +724,22 @@ function! vim_q_connect#quickfix_annotate()
         " Extract emoji from text and clean the text
         let text = entry.text
         let emoji = ''
-        " Extract all leading emoji characters (non-ASCII)
-        let emoji = matchstr(text, '^[^\x00-\x7F]\+')
+        " Extract leading emoji by checking Unicode code points
+        let idx = 0
+        while idx < strchars(text)
+          let char = strcharpart(text, idx, 1)
+          let codepoint = char2nr(char)
+          " Check if in emoji ranges: U+1F300-U+1F9FF, U+2600-U+26FF, U+2700-U+27BF
+          if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || (codepoint >= 0x2600 && codepoint <= 0x27BF)
+            let emoji .= char
+            let idx += 1
+          else
+            break
+          endif
+        endwhile
         if !empty(emoji)
-          let text = substitute(text, '^[^\x00-\x7F]\+\s*', '', '')
+          let text = strcharpart(text, strchars(emoji))
+          let text = substitute(text, '^\s\+', '', '')
         endif
         
         " Use emoji from user_data if available, otherwise use extracted or type-based emoji

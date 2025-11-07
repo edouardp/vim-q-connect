@@ -40,6 +40,20 @@ logger = logging.getLogger("vim-context")
 mcp = FastMCP("vim-context")
 
 class VimState:
+    """Thread-safe state manager for Vim editor connection and context.
+    
+    Manages shared state between MCP server thread and socket listener threads.
+    Uses a single lock (_lock) to protect current_context and vim_connected flag.
+    
+    Thread-safe methods (use lock):
+    - update_context(): Updates editor context from Vim
+    - get_context(): Returns copy of current context
+    - set_connected()/is_connected(): Manages connection state
+    
+    Thread-safe without lock (queue.Queue is thread-safe):
+    - request_queue: Outgoing requests to Vim
+    - response_queues: Incoming responses keyed by request_id
+    """
     def __init__(self):
         self._lock = threading.Lock()
         self.socket_server = None
