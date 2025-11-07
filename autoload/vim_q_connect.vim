@@ -98,8 +98,10 @@ function! s:InitPropTypes()
     return
   endif
   
-  " Always create the property type (will fail if it already exists)
-  call prop_type_add('q_virtual_text', {'highlight': 'qtext'})
+  " Only create the property type if it doesn't already exist
+  if empty(prop_type_get('q_virtual_text'))
+    call prop_type_add('q_virtual_text', {'highlight': 'qtext'})
+  endif
 endfunction
 
 " Add virtual text above specified line
