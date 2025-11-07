@@ -23,6 +23,7 @@ from both the vim-q-connect plugin and Q CLI MCP client.
 """
 
 import os
+import sys
 import socket
 import json
 import threading
@@ -188,8 +189,6 @@ def start_socket_server():
     
     threading.Thread(target=accept_connections, daemon=True).start()
 
-# Start server on import
-start_socket_server()
 
 @mcp.tool()
 def get_editor_context() -> dict:
@@ -390,4 +389,5 @@ def get_annotations_above_current_position() -> str:
         return f"Error requesting annotations: {e}"
 
 if __name__ == "__main__":
+    start_socket_server()
     mcp.run()
