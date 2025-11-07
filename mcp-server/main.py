@@ -161,6 +161,7 @@ def start_socket_server():
     
     vim_state.socket_server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     vim_state.socket_server.bind(socket_path)
+    os.chmod(socket_path, 0o600)
     vim_state.socket_server.listen(1)
     
     def accept_connections():
@@ -188,7 +189,7 @@ def start_socket_server():
                             # Then check for incoming data
                             conn.settimeout(0.1)  # Non-blocking with short timeout
                             try:
-                                data = conn.recv(4096).decode()
+                                data = conn.recv(4096).decode('utf-8', errors='replace')
                                 if not data:
                                     vim_state.set_connected(False)
                                     logger.info("Vim disconnected from MCP socket")
