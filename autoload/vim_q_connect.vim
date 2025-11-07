@@ -98,8 +98,8 @@ function! s:InitPropTypes()
     return
   endif
   
-  " Always create the property type (will silently fail if it already exists)
-  silent! call prop_type_add('q_virtual_text', {'highlight': 'qtext'})
+  " Always create the property type (will fail if it already exists)
+  call prop_type_add('q_virtual_text', {'highlight': 'qtext'})
 endfunction
 
 " Add virtual text above specified line
@@ -115,12 +115,7 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
   let l:prop_type = 'q_virtual_text'
   
   " Check for existing props with same text to avoid duplicates
-  let existing_props = []
-  try
-    let existing_props = prop_list(a:line_num, {'type': l:prop_type})
-  catch
-    " If prop_list fails, continue anyway
-  endtry
+  let existing_props = prop_list(a:line_num, {'type': l:prop_type})
   
   for prop in existing_props
     if has_key(prop, 'text') && stridx(prop.text, a:text) >= 0
@@ -149,24 +144,17 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
     
     " Pad text to window width + 30 chars for full-line background
     let padded_text = formatted_text . repeat(' ', win_width + 30 - strwidth(formatted_text))
-    try
-      call prop_add(a:line_num, 0, {
-        \ 'type': l:prop_type,
-        \ 'text': padded_text,
-        \ 'text_align': 'above'
-      \ })
-    catch
-      " Skip if prop_add fails
-    endtry
+    call prop_add(a:line_num, 0, {
+      \ 'type': l:prop_type,
+      \ 'text': padded_text,
+      \ 'text_align': 'above'
+    \ })
   endfor
 endfunction
 
 " Clear all Q Connect virtual text
 function! vim_q_connect#clear_virtual_text()
-  try
-    call prop_remove({'type': 'q_virtual_text', 'all': 1})
-  catch
-  endtry
+  call prop_remove({'type': 'q_virtual_text', 'all': 1})
 endfunction
 
 " Get annotations at current cursor position
