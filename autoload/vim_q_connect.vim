@@ -660,8 +660,10 @@ function! vim_q_connect#quickfix_annotate()
         let emoji = ''
         if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji')
           let emoji = entry.user_data.emoji
+          echo "Using user_data emoji: " . emoji
         else
           let emoji = entry.type ==# 'E' ? '❌' : entry.type ==# 'W' ? '⚠️' : '💡'
+          echo "Entry type: '" . get(entry, 'type', 'MISSING') . "' -> emoji: '" . emoji . "'"
         endif
         
         " Switch to the buffer temporarily to add virtual text
