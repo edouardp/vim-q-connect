@@ -149,11 +149,15 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
     
     " Pad text to window width + 30 chars for full-line background
     let padded_text = formatted_text . repeat(' ', win_width + 30 - strwidth(formatted_text))
-    call prop_add(a:line_num, 0, {
-      \ 'type': l:prop_type,
-      \ 'text': padded_text,
-      \ 'text_align': 'above'
-    \ })
+    try
+      call prop_add(a:line_num, 0, {
+        \ 'type': l:prop_type,
+        \ 'text': padded_text,
+        \ 'text_align': 'above'
+      \ })
+    catch
+      " Skip if prop_add fails
+    endtry
   endfor
 endfunction
 
