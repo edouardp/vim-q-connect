@@ -66,7 +66,7 @@ def review(target: str = None):
 4. Check for best practice violations
 
 Use the add_to_quickfix tool to add each issue with:
-- The exact line of code (use 'line' parameter, not 'line_number')
+- The exact line of code (use 'line' parameter, an add a 'line_number_hint' of the lint number that line is found on)
 - A multi-line description:
   - First line: Brief issue description with emoji
   - Second line: Explanation of why it's a problem
@@ -180,7 +180,7 @@ Make sure each fix:
 - Is minimal and focused"""
 
 @mcp.prompt()
-def add_documentation():
+def doc():
     """Add documentation to the current code
     
     Adds appropriate documentation (docstrings, comments) to the code
