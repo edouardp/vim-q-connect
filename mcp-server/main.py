@@ -51,7 +51,7 @@ def review(target: str = None):
             context = vim_state.get_context()
             prompt += f"Current context:\n"
             prompt += f"File: {context['filename']}\n"
-            prompt += f"Line: {context['current_line']}\n"
+            prompt += f"Line: {context['line']}\n"
             
             if context.get('visual_start', 0) > 0:
                 prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n"
