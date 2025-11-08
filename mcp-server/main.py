@@ -128,8 +128,7 @@ def explain(target: str = None):
         prompt += """
 
 Steps:
-1. Use get_editor_context to see the current code
-2. Use add_virtual_text to add comprehensive annotations explaining the code
+1. Use add_virtual_text to add comprehensive annotations explaining the code
 
 Annotation Guidelines:
 - Start with an OVERVIEW annotation using ℹ️ emoji for cases where there is a
@@ -137,8 +136,9 @@ Annotation Guidelines:
 - Add detailed annotations using 💬 emoji for each significant line or block
 - Make annotations detailed and suitable for senior developers
 - Include technical context, design rationale, and implementation details
-- Use blocks of text to provide comprehensive explanations
+- Use blocks of text to provide comprehensive explanations if required
 - Focus on "why" decisions were made, not just "what" the code does
+- Always include filename and line_number_hint parameters for better annotation placement
 
 Example annotation structure:
 - ℹ️ OVERVIEW: High-level purpose and architectural context
