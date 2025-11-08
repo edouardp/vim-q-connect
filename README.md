@@ -47,6 +47,16 @@ You: "What does this function do?"
 Q: [Reads your current cursor position and explains the code]
 ```
 
+**Fix Quickfix Issues**:
+
+```
+You: "Check this codebase for issues"
+Q: [Populates quickfix list with findings]
+You: [Navigate to first issue with :cnext]
+You: "Fix this issue"
+Q: [Reads the current quickfix entry and applies the fix]
+```
+
 ## Requirements
 
 ### Vim
