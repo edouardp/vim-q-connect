@@ -59,7 +59,7 @@ def review(target: str = None):
         prompt += f"Line Content: {context['content']}\n\n"
         
     prompt += f"Please review the code for issues."
-    if target is None:
+    if target is not None:
         prompt += f"The user has specifically asked for this to be reviewed: {target}"
     elif vim_state.is_connected():
         prompt += "Use the context above to determine what should be reviewed. If they have a current selection, that is the most important thing."
