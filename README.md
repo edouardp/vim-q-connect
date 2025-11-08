@@ -19,8 +19,8 @@ vim-q-connect creates a bidirectional connection between Vim and Q CLI using the
 **Code Review**:
 
 ```
-You: "Review this function for security issues"
-Q: [Analyzes code, adds inline annotations]
+You (to Q): "Review this function for security issues"
+Q: [Analyzes code, adds inline annotations in Vim]
 ```
 
 ```python
@@ -34,8 +34,8 @@ def process_user_input(data):
 **Navigate to Issues**:
 
 ```
-You: "Check this codebase for quality issues"
-Q: [Populates quickfix list with findings]
+You (to Q): "Check this codebase for quality issues"
+Q: [Populates quickfix list with findings im Vim]
 ```
 
 Navigate through issues with `:cnext`/`:cprev`, annotations appear automatically.
@@ -43,17 +43,17 @@ Navigate through issues with `:cnext`/`:cprev`, annotations appear automatically
 **Explain Code**:
 
 ```
-You: "What does this function do?"
-Q: [Reads your current cursor position and explains the code]
+You (to Q): "What does this function do?"
+Q: [Reads your current cursor position im Vim and explains the code]
 ```
 
 **Fix Quickfix Issues**:
 
 ```
-You: "Check this codebase for issues"
+You (to Q): "Check this codebase for issues"
 Q: [Populates quickfix list with findings]
-You: [Navigate to first issue with :cnext]
-You: "Fix this issue"
+You (in Vim): [Navigate to a quickfix issue with :cnext]
+You (to Q): "Fix this issue"
 Q: [Reads the current quickfix entry and applies the fix]
 ```
 
