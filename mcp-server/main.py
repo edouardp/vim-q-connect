@@ -44,29 +44,29 @@ mcp = FastMCP("vim-context")
 def review(target: str = None):
     """Review the code for quality, security, and best practices"""
     
-    
-    prompt = ""
-    
-    if vim_state.is_connected():
-        context = vim_state.get_context()
-        prompt += f"Current context:\n"
-        prompt += f"File: {context['filename']}\n"
-        prompt += f"Line: {context['current_line']}\n"
+    try:
+        prompt = ""
         
-        if context.get('visual_selection') and context['visual_selection']['start_line'] != context['visual_selection']['end_line']:
-            prompt += f"Selection: lines {context['visual_selection']['start_line']}-{context['visual_selection']['end_line']}\n"
-        
-        prompt += f"Line Content: {context['content']}\n\n"
-        
-    prompt += f"Please review the code for issues."
-    if target is not None:
-        prompt += f"The user has specifically asked for this to be reviewed: {target}"
-    elif vim_state.is_connected():
-        prompt += "Use the context above to determine what should be reviewed. If they have a current selection, that is the most important thing."
+        if vim_state.is_connected():
+            context = vim_state.get_context()
+            prompt += f"Current context:\n"
+            prompt += f"File: {context['filename']}\n"
+            prompt += f"Line: {context['current_line']}\n"
+            
+            if context.get('visual_selection') and context['visual_selection']['start_line'] != context['visual_selection']['end_line']:
+                prompt += f"Selection: lines {context['visual_selection']['start_line']}-{context['visual_selection']['end_line']}\n"
+            
+            prompt += f"Line Content: {context['content']}\n\n"
+            
+        prompt += f"Please review the code for issues."
+        if target is not None:
+            prompt += f"The user has specifically asked for this to be reviewed: {target}"
+        elif vim_state.is_connected():
+            prompt += "Use the context above to determine what should be reviewed. If they have a current selection, that is the most important thing."
 
-    prompt += f"\n\nFor the code they have asked for a review for:"
-        
-    prompt += """
+        prompt += f"\n\nFor the code they have asked for a review for:"
+            
+        prompt += """
 1. Check for security vulnerabilities
 2. Check for code quality issues
 3. Check for performance problems
@@ -87,7 +87,18 @@ Examples of good quickfix entries:
 
 The user will navigate through issues using :cnext/:cprev in Vim and can use the @fix prompt to fix individual issues."""
 
-    return prompt
+        return prompt
+        
+    except Exception as e:
+        import traceback
+        error_details = f"ERROR in review prompt:\n"
+        error_details += f"Exception type: {type(e).__name__}\n"
+        error_details += f"Exception message: {str(e)}\n"
+        error_details += f"Traceback:\n{traceback.format_exc()}\n"
+        error_details += f"Function arguments: target={target}\n"
+        if 'vim_state' in globals():
+            error_details += f"Vim connected: {vim_state.is_connected()}\n"
+        return error_details
 
 
 
