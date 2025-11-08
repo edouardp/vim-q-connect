@@ -40,30 +40,48 @@ logger = logging.getLogger("vim-context")
 mcp = FastMCP("vim-context")
 
 @mcp.prompt()
-def review_code():
-    """Review the current code for quality, security, and best practices
+def review(target: str = None):
+    """Review the code for quality, security, and best practices"""
     
-    Analyzes the code at the current cursor position and provides:
-    - Security vulnerabilities
-    - Code quality issues
-    - Performance concerns
-    - Best practice violations
+    target_str = "the entire codebase (current repository or folder)"
+    multifiles = True
     
-    Results are added as inline annotations in the editor.
-    """
-    return """Please review the code I'm currently looking at in my editor for:
+    if target is None and vim_state.is_connected():
+        context = vim_state.get_context()
+        target_str = context["filename"]
+        multifiles = False
 
-1. Security vulnerabilities (SQL injection, XSS, authentication issues, etc.)
-2. Code quality issues (complexity, readability, maintainability)
-3. Performance concerns (inefficient algorithms, unnecessary operations)
-4. Best practice violations (naming conventions, error handling, etc.)
+    prompt = f"Please review {target_str} for issues."
 
-For each issue found, use the add_virtual_text tool to add an inline annotation above the relevant line with:
-- An appropriate emoji (🔒 for security, ⚡ for performance, 🧹 for quality)
-- A brief description of the issue
-- Specific recommendations for fixing it
+    if multifiles:
+        prompt += f"\n\nFor each code file in {target_str}:"
+    else:
+        prompt += f"\n\nFor the file {target_str}:"
+        
+    prompt += """
+1. Check for security vulnerabilities
+2. Check for code quality issues
+3. Check for performance problems
+4. Check for best practice violations
 
-Use the get_editor_context tool to see what code I'm looking at."""
+Use the add_to_quickfix tool to add each issue with:
+- The exact line of code (use 'line' parameter, not 'line_number')
+- A multi-line description:
+  - First line: Brief issue description with emoji
+  - Second line: Explanation of why it's a problem
+  - Third line: Specific fix instructions
+- Appropriate type ('E' for errors, 'W' for warnings, 'I' for info)
+
+Examples of good quickfix entries:
+- "🔒 SECURITY: Hardcoded password detected\nPasswords in source code can be exposed in version control\nMove to environment variables or secure configuration"
+- "🚀 PERFORMANCE: Database query in loop\nExecuting queries in loops causes N+1 performance issues\nMove query outside loop or use batch operations"
+- "🧹 QUALITY: Missing error handling\nUnhandled exceptions can crash the application\nAdd try-catch blocks with appropriate error responses"
+
+The user will navigate through issues using :cnext/:cprev in Vim and can use the fix_current_issue prompt to fix individual issues."""
+
+    return prompt
+
+
 
 @mcp.prompt()
 def explain_code():
@@ -82,30 +100,6 @@ Provide:
 
 Use the get_editor_context tool to see what code I'm looking at."""
 
-@mcp.prompt()
-def find_issues():
-    """Find all issues in the current codebase
-    
-    Scans the codebase for quality, security, and performance issues,
-    then populates the quickfix list so the user can navigate through them.
-    """
-    return """Please analyze the codebase for issues and add them to the quickfix list.
-
-For each file in the codebase:
-1. Check for security vulnerabilities
-2. Check for code quality issues
-3. Check for performance problems
-4. Check for best practice violations
-
-Use the add_to_quickfix tool to add each issue with:
-- The exact line of code (use 'line' parameter, not 'line_number')
-- A multi-line description:
-  - First line: Brief issue description with emoji
-  - Second line: Explanation of why it's a problem
-  - Third line: Specific fix instructions
-- Appropriate type ('E' for errors, 'W' for warnings, 'I' for info)
-
-The user will navigate through issues using :cnext/:cprev in Vim."""
 
 @mcp.prompt()
 def fix_current_issue():
@@ -173,66 +167,6 @@ For each optimization opportunity:
 - Suggest the optimized approach
 - Estimate the performance improvement"""
 
-@mcp.prompt()
-def review_current_file():
-    """Review the current file for quality, security, and best practices
-    
-    Analyzes the entire current file and provides comprehensive feedback on:
-    - Security vulnerabilities
-    - Code quality issues
-    - Performance concerns
-    - Best practice violations
-    
-    Results are added as inline annotations throughout the file.
-    """
-    return """Please review the entire current file I'm looking at for:
-
-1. Security vulnerabilities (SQL injection, XSS, authentication issues, etc.)
-2. Code quality issues (complexity, readability, maintainability)
-3. Performance concerns (inefficient algorithms, unnecessary operations)
-4. Best practice violations (naming conventions, error handling, etc.)
-
-For each issue found, use the add_virtual_text tool to add an inline annotation above the relevant line with:
-- An appropriate emoji (🔒 for security, 🚀 for performance, 🧹 for quality)
-- A brief description of the issue
-- Specific recommendations for fixing it
-
-Examples of good annotations:
-- 🔒 SECURITY: SQL injection vulnerability - Use parameterized queries instead of string concatenation
-- 🚀 PERFORMANCE: O(n²) nested loop - Consider using a hash map for O(n) lookup
-- 🧹 QUALITY: Function too complex (15+ lines) - Break into smaller, focused functions
-
-Use the get_editor_context tool to see the current file content."""
-
-@mcp.prompt()
-def review_codebase():
-    """Review the entire codebase for quality, security, and best practices
-    
-    Scans all files in the current repository or folder for issues and populates
-    the quickfix list so the user can navigate through all findings.
-    """
-    return """Please review the entire codebase (current repository or folder) for issues.
-
-For each file in the codebase:
-1. Check for security vulnerabilities
-2. Check for code quality issues
-3. Check for performance problems
-4. Check for best practice violations
-
-Use the add_to_quickfix tool to add each issue with:
-- The exact line of code (use 'line' parameter, not 'line_number')
-- A multi-line description:
-  - First line: Brief issue description with emoji
-  - Second line: Explanation of why it's a problem
-  - Third line: Specific fix instructions
-- Appropriate type ('E' for errors, 'W' for warnings, 'I' for info)
-
-Examples of good quickfix entries:
-- "🔒 SECURITY: Hardcoded password detected\nPasswords in source code can be exposed in version control\nMove to environment variables or secure configuration"
-- "🚀 PERFORMANCE: Database query in loop\nExecuting queries in loops causes N+1 performance issues\nMove query outside loop or use batch operations"
-- "🧹 QUALITY: Missing error handling\nUnhandled exceptions can crash the application\nAdd try-catch blocks with appropriate error responses"
-
-The user will navigate through issues using :cnext/:cprev in Vim and can use the fix_current_issue prompt to fix individual issues."""
 
 class VimState:
     """Thread-safe state manager for Vim editor connection and context.
