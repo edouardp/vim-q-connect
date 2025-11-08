@@ -30,6 +30,7 @@ import threading
 import logging
 import queue
 import uuid
+import signal
 from pathlib import Path
 from fastmcp import FastMCP
 
@@ -84,7 +85,7 @@ The user will navigate through issues using :cnext/:cprev in Vim and can use the
 
 
 @mcp.prompt()
-def explain_code():
+def explain():
     """Explain what the current code does
     
     Provides a clear explanation of the code at the current cursor position,
@@ -102,21 +103,77 @@ Use the get_editor_context tool to see what code I'm looking at."""
 
 
 @mcp.prompt()
-def fix_current_issue():
-    """Fix the current quickfix issue
+def fix(target: str = None):
+    """Fix issues in code or the current quickfix issue"""
     
-    Reads the current quickfix entry the user is focused on and applies
-    the appropriate fix to resolve the issue.
-    """
-    return """Please fix the issue I'm currently looking at in the quickfix list.
+    if target is None:
+        # Check if there's a current quickfix issue
+        if vim_state.is_connected():
+            try:
+                # Create unique request ID and response queue
+                request_id = str(uuid.uuid4())
+                response_queue = queue.Queue()
+                vim_state.response_queues[request_id] = response_queue
+                
+                # Put request in queue for server thread to send
+                vim_state.request_queue.put(('get_current_quickfix', {
+                    "method": "get_current_quickfix",
+                    "request_id": request_id,
+                    "params": {}
+                }))
+                
+                # Wait for response
+                try:
+                    response_type, data = response_queue.get(timeout=2.0)
+                    if response_type == 'quickfix_entry' and 'error' not in data and 'text' in data:
+                        # We have a valid quickfix entry
+                        issue_text = data.get('text', '').split('\n')[0]  # First line only
+                        return f"""Please fix the current quickfix issue: {issue_text}
+
+The issue is at {data.get('filename', 'unknown file')}:{data.get('line_number', 0)}
 
 Steps:
-1. Use get_current_quickfix_entry to see what issue I'm on
-2. Read the file and understand the context around the issue
-3. Apply the appropriate fix to resolve the issue
+1. Read the file and understand the context around the issue
+2. Apply the appropriate fix to resolve this specific issue
+3. Explain what you changed and why
+
+Make sure the fix:
+- Addresses the root cause, not just the symptom
+- Follows best practices and coding standards
+- Doesn't introduce new issues
+- Is minimal and focused"""
+                finally:
+                    # Clean up response queue
+                    if request_id in vim_state.response_queues:
+                        del vim_state.response_queues[request_id]
+            except:
+                pass  # Fall through to editor context
+        
+        # No quickfix entry or error - use current editor context
+        return """Please fix the code I'm currently looking at.
+
+Steps:
+1. Use get_editor_context to see what code I'm currently viewing
+2. Identify any issues that need fixing
+3. Apply appropriate fixes to resolve the issues
 4. Explain what you changed and why
 
 Make sure the fix:
+- Addresses the root cause, not just the symptom
+- Follows best practices and coding standards
+- Doesn't introduce new issues
+- Is minimal and focused"""
+    
+    return f"""Please fix issues in {target}.
+
+Use get_editor_context if you need to see the current code context.
+
+Steps:
+1. Identify the issues that need fixing in {target}
+2. Apply appropriate fixes to resolve each issue
+3. Explain what you changed and why
+
+Make sure each fix:
 - Addresses the root cause, not just the symptom
 - Follows best practices and coding standards
 - Doesn't introduce new issues
@@ -144,28 +201,6 @@ Make the documentation:
 - Focused on "why" not just "what"
 - Helpful for future maintainers"""
 
-@mcp.prompt()
-def optimize_performance():
-    """Optimize the performance of the current code
-    
-    Analyzes the code for performance issues and suggests or implements
-    optimizations.
-    """
-    return """Please analyze and optimize the performance of the code I'm currently looking at.
-
-Use the get_editor_context tool to see the code.
-
-Look for:
-1. Inefficient algorithms (O(n²) that could be O(n), etc.)
-2. Unnecessary operations (redundant loops, repeated calculations)
-3. Memory issues (large allocations, memory leaks)
-4. I/O bottlenecks (excessive file/network operations)
-
-For each optimization opportunity:
-- Use add_virtual_text to annotate the issue with 🚀 emoji
-- Explain the current complexity/issue
-- Suggest the optimized approach
-- Estimate the performance improvement"""
 
 
 class VimState:
@@ -412,49 +447,6 @@ def goto_line(line_number: int, filename: str = "") -> str:
         logger.error(f"Error sending navigation command: {e}")
         return f"Error sending navigation command: {e}"
 
-# @mcp.tool()
-# def add_virtual_text(line: int, text: str, highlight: str = "Comment", emoji: str = "") -> str:
-#     """Add virtual text above the specified line
-#     
-#     Args:
-#         line: Line number to add virtual text above (1-indexed)
-#         text: Text content to display. Use actual newlines (not \\n) for multi-line text
-#         highlight: Vim highlight group (default: "Comment")
-#         emoji: Optional emoji for the first line (default: uses Ｑ). Use sparingly - only when it adds semantic meaning.
-#     
-#     Example:
-#         Single line: add_virtual_text(10, "This is a comment")
-#         Multi-line: add_virtual_text(10, "Line 1\nLine 2\nLine 3")
-#         With emoji: add_virtual_text(10, "Debug info", emoji="🐛")
-#         
-#     Common working emoji: 🤖🔥⭐💡✅❌📝🚀🎯🔧⚡🎉📊🔍💻📱🌟🎨🏆🔒🔑📈📉🎵
-#     Note: Warning sign ⚠️ may not render properly in some Vim environments. Don't use
-#     """
-#     global vim_channel
-#     
-#     if not vim_channel:
-#         return "Vim not connected to MCP socket"
-#     
-#     try:
-#         command = {
-#             "method": "add_virtual_text",
-#             "params": {
-#                 "line": line,
-#                 "text": text,
-#                 "highlight": highlight,
-#                 "emoji": emoji
-#             }
-#         }
-#         
-#         logger.info(f"Sending add_virtual_text command: {command}")
-#         message = json.dumps(command) + '\n'
-#         vim_channel.send(message.encode())
-#         logger.info(f"Virtual text command sent successfully")
-#         return f"Virtual text added above line {line}: {text}"
-#     except Exception as e:
-#         logger.error(f"Error sending virtual text command: {e}")
-#         return f"Error sending virtual text command: {e}"
-
 @mcp.tool()
 def add_virtual_text(entries: list[dict]) -> str:
     """Add multiple virtual text entries efficiently to annotate the user's file in their editor.
@@ -643,6 +635,33 @@ def get_annotations_above_current_position() -> str:
         logger.error(f"Error requesting annotations: {e}")
         return f"Error requesting annotations: {e}"
 
+def cleanup_and_exit():
+    """Clean up resources and exit gracefully"""
+    logger.info("Shutting down MCP server...")
+    
+    if vim_state.socket_server:
+        try:
+            vim_state.socket_server.close()
+        except Exception as e:
+            logger.error(f"Error closing socket server: {e}")
+    
+    if vim_state.vim_channel:
+        try:
+            vim_state.vim_channel.close()
+        except Exception as e:
+            logger.error(f"Error closing vim channel: {e}")
+    
+    sys.exit(0)
+
+def signal_handler(signum, frame):
+    """Handle shutdown signals"""
+    logger.info(f"Received signal {signum}, shutting down...")
+    cleanup_and_exit()
+
 if __name__ == "__main__":
+    # Set up signal handlers for graceful shutdown
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    
     start_socket_server()
     mcp.run()
