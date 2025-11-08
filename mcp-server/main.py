@@ -112,12 +112,12 @@ def explain(target: str = None):
         
         if vim_state.is_connected():
             context = vim_state.get_context()
-            prompt += f"Current context:\n"
+            prompt += f"Current context (from get_editor_context tool, only call the tool if you require additional context):\n"
             prompt += f"File: {context['filename']}\n"
             prompt += f"Line: {context['line']}\n"
             
             if context.get('visual_start', 0) > 0:
-                prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n"
+                prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n\n"
             
         prompt += f"Please explain the code by adding detailed annotations directly to the editor."
         if target is not None:
