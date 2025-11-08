@@ -18,29 +18,29 @@ vim-q-connect is a bidirectional integration between Vim and Q CLI (Amazon's AI 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         Q CLI                                │
-│                    (AI Assistant)                            │
+│                         Q CLI                               │
+│                    (AI Assistant)                           │
 └────────────────────────┬────────────────────────────────────┘
                          │ MCP Protocol
                          │ (Tool Invocations)
                          │
 ┌────────────────────────▼────────────────────────────────────┐
-│                    MCP Server                                │
-│                  (mcp-server/main.py)                        │
-│  - Exposes tools to Q CLI                                    │
-│  - Manages Vim connection state                              │
-│  - Handles bidirectional messaging                           │
+│                    MCP Server                               │
+│                  (mcp-server/main.py)                       │
+│  - Exposes tools to Q CLI                                   │
+│  - Manages Vim connection state                             │
+│  - Handles bidirectional messaging                          │
 └────────────────────────┬────────────────────────────────────┘
                          │ Unix Domain Socket
                          │ (JSON-RPC over newline-delimited)
                          │
 ┌────────────────────────▼────────────────────────────────────┐
-│                   Vim Plugin                                 │
-│         (plugin/ + autoload/vim_q_connect.vim)               │
-│  - Tracks editor context (cursor, selections, files)         │
-│  - Handles remote commands (goto, annotations)               │
-│  - Manages virtual text properties                           │
-└──────────────────────────────────────────────────────────────┘
+│                   Vim Plugin                                │
+│         (plugin/ + autoload/vim_q_connect.vim)              │
+│  - Tracks editor context (cursor, selections, files)        │
+│  - Handles remote commands (goto, annotations)              │
+│  - Manages virtual text properties                          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Features
@@ -58,9 +58,9 @@ vim-q-connect is a bidirectional integration between Vim and Q CLI (Amazon's AI 
 
 #### 1. Context Updates (Vim → MCP Server)
 
-**Trigger**: Cursor movement, text changes, mode changes
-**Direction**: One-way (no response expected)
-**Frequency**: High (every cursor move)
+- **Trigger**: Cursor movement, text changes, mode changes
+- **Direction**: One-way (no response expected)
+- **Frequency**: High (every cursor move)
 
 ```
 Vim Plugin                    MCP Server
@@ -83,8 +83,8 @@ Vim Plugin                    MCP Server
 
 #### 2. Navigation Commands (MCP Server → Vim)
 
-**Trigger**: Q CLI calls `goto_line()` tool
-**Direction**: One-way (fire-and-forget)
+- **Trigger**: Q CLI calls `goto_line()` tool
+- **Direction**: One-way (fire-and-forget)
 
 ```
 Q CLI                MCP Server              Vim Plugin
@@ -107,8 +107,8 @@ Q CLI                MCP Server              Vim Plugin
 
 #### 3. Virtual Text Annotations (MCP Server → Vim)
 
-**Trigger**: Q CLI calls `add_virtual_text()` tool
-**Direction**: One-way (fire-and-forget)
+- **Trigger**: Q CLI calls `add_virtual_text()` tool
+- **Direction**: One-way (fire-and-forget)
 
 ```
 Q CLI                MCP Server              Vim Plugin
@@ -130,8 +130,8 @@ Q CLI                MCP Server              Vim Plugin
 
 #### 4. Annotation Queries (MCP Server → Vim → MCP Server)
 
-**Trigger**: Q CLI calls `get_annotations_above_current_position()` tool
-**Direction**: Request-response with timeout
+- **Trigger**: Q CLI calls `get_annotations_above_current_position()` tool
+- **Direction**: Request-response with timeout
 
 ```
 Q CLI                MCP Server              Vim Plugin
@@ -160,6 +160,7 @@ Q CLI                MCP Server              Vim Plugin
 ```
 
 **Key Design Decision**: Request-response pattern uses:
+
 - Unique `request_id` (UUID) to correlate responses
 - Per-request response queues in MCP server
 - 5-second timeout to prevent hanging
@@ -167,16 +168,17 @@ Q CLI                MCP Server              Vim Plugin
 
 #### 5. Quickfix Queries (MCP Server → Vim → MCP Server)
 
-**Trigger**: Q CLI calls `get_current_quickfix_entry()` tool
-**Direction**: Request-response (same pattern as annotations)
+- **Trigger**: Q CLI calls `get_current_quickfix_entry()` tool
+- **Direction**: Request-response (same pattern as annotations)
 
 ### Protocol Details
 
-**Transport**: Unix domain socket at `.vim-q-mcp.sock`
-**Format**: JSON-RPC over newline-delimited messages
-**Encoding**: UTF-8 with error replacement
+- **Transport**: Unix domain socket at `.vim-q-mcp.sock`
+- **Format**: JSON-RPC over newline-delimited messages
+- **Encoding**: UTF-8 with error replacement
 
 **Message Structure**:
+
 ```json
 {
   "method": "method_name",
@@ -195,12 +197,12 @@ The MCP server uses a multi-threaded architecture to handle concurrent operation
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Main Thread                             │
-│                   (FastMCP Event Loop)                       │
-│  - Handles MCP tool invocations from Q CLI                   │
-│  - Enqueues requests to Vim                                  │
-│  - Waits on response queues for request-response patterns    │
-└──────────────────────┬───────────────────────────────────────┘
+│                      Main Thread                            │
+│                   (FastMCP Event Loop)                      │
+│  - Handles MCP tool invocations from Q CLI                  │
+│  - Enqueues requests to Vim                                 │
+│  - Waits on response queues for request-response patterns   │
+└──────────────────────┬──────────────────────────────────────┘
                        │
                        │ Shared State: VimState
                        │ - request_queue (thread-safe Queue)
@@ -229,6 +231,7 @@ The MCP server uses a multi-threaded architecture to handle concurrent operation
 ### Thread-Safe State Management
 
 **VimState Class**:
+
 ```python
 class VimState:
     def __init__(self):
@@ -303,9 +306,9 @@ while True:
 
 #### 1. `get_editor_context()`
 
-**Purpose**: Retrieve current Vim editor state
-**Returns**: Dictionary with file content, cursor position, selection, metadata
-**Thread Safety**: Acquires lock to copy `current_context`
+- **Purpose**: Retrieve current Vim editor state
+- **Returns**: Dictionary with file content, cursor position, selection, metadata
+- **Thread Safety**: Acquires lock to copy `current_context`
 
 ```python
 @mcp.tool()
@@ -324,9 +327,9 @@ def get_editor_context() -> dict:
 
 #### 2. `goto_line(line_number: int, filename: str = "")`
 
-**Purpose**: Navigate Vim to specific line/file
-**Returns**: Status string
-**Pattern**: Fire-and-forget (enqueues request, returns immediately)
+- **Purpose**: Navigate Vim to specific line/file
+- **Returns**: Status string
+- **Pattern**: Fire-and-forget (enqueues request, returns immediately)
 
 ```python
 @mcp.tool()
@@ -340,11 +343,12 @@ def goto_line(line_number: int, filename: str = "") -> str:
 
 #### 3. `add_virtual_text(entries: list[dict])`
 
-**Purpose**: Add inline annotations to Vim
-**Parameters**: List of entries with `line`/`line_number`, `text`, `emoji`
-**Pattern**: Fire-and-forget
+- **Purpose**: Add inline annotations to Vim
+- **Parameters**: List of entries with `line`/`line_number`, `text`, `emoji`
+- **Pattern**: Fire-and-forget
 
 **Design Decision**: Batch API instead of single annotation
+
 - Reduces round-trips for multiple annotations
 - More efficient for code review scenarios
 - Single message to Vim
@@ -359,9 +363,9 @@ def goto_line(line_number: int, filename: str = "") -> str:
 
 #### 5. `get_annotations_above_current_position()`
 
-**Purpose**: Query existing annotations at cursor
-**Returns**: JSON string with annotation list
-**Pattern**: Request-response with timeout
+- **Purpose**: Query existing annotations at cursor
+- **Returns**: JSON string with annotation list
+- **Pattern**: Request-response with timeout
 
 ```python
 @mcp.tool()
@@ -386,15 +390,16 @@ def get_annotations_above_current_position() -> str:
 ```
 
 **Design Decision**: 5-second timeout
+
 - Prevents indefinite blocking if Vim doesn't respond
 - Long enough for Vim to process request
 - Short enough to not frustrate users
 
 #### 6. `get_current_quickfix_entry()`
 
-**Purpose**: Get the quickfix entry user is focused on
-**Returns**: Dictionary with entry details
-**Pattern**: Request-response (same as annotations)
+- **Purpose**: Get the quickfix entry user is focused on
+- **Returns**: Dictionary with entry details
+- **Pattern**: Request-response (same as annotations)
 
 ---
 
@@ -408,6 +413,7 @@ autoload/vim_q_connect.vim        # Implementation (lazy-loaded)
 ```
 
 **Design Decision**: Autoload pattern
+
 - `plugin/` loads immediately on Vim startup
 - `autoload/` loads only when functions are called
 - Reduces Vim startup time
@@ -433,6 +439,7 @@ let g:visual_end = 0               " Visual selection end (0 = none)
 ```
 
 **Design Decision**: Global variables without namespace prefix
+
 - Simpler code
 - Risk of conflicts with other plugins
 - **TODO**: Should be prefixed with `g:vim_q_connect_*`
@@ -518,6 +525,7 @@ User runs :QConnect!
 **Purpose**: Automatically reload files changed externally (e.g., by Q CLI or git)
 
 **Implementation**:
+
 ```vim
 augroup AutoRead
   autocmd!
@@ -547,6 +555,7 @@ augroup END
 ### Channel and Socket Handling
 
 **Channel Mode**: `'nl'` (newline-delimited)
+
 ```vim
 let g:mcp_channel = ch_open('unix:' . socket_path, {
   \ 'mode': 'nl',
@@ -556,6 +565,7 @@ let g:mcp_channel = ch_open('unix:' . socket_path, {
 ```
 
 **Design Decision**: Newline mode vs Raw mode
+
 - `'nl'` mode: Vim automatically splits on newlines
 - Callback receives complete messages
 - Simpler than manual buffering
@@ -584,6 +594,7 @@ endfunction
 ```
 
 **Design Decision**: `timer_start(0, ...)` for all handlers
+
 - Executes handler outside callback context
 - Prevents issues with Vim's callback restrictions
 - Allows handlers to modify buffers, windows, etc.
@@ -592,6 +603,7 @@ endfunction
 ### Context Tracking
 
 **Autocmd Group**: `VimLLMContext`
+
 ```vim
 augroup VimLLMContext
   autocmd!
@@ -601,6 +613,7 @@ augroup END
 ```
 
 **Context Update Flow**:
+
 ```
 Cursor moves or text changes
         │
@@ -612,27 +625,28 @@ WriteContext() called
 │ Update global state:                                      │
 │ - g:current_filename = expand('%:.')                      │
 │ - g:current_line = line('.')                              │
-│ - g:visual_start, g:visual_end (if in visual mode)       │
+│ - g:visual_start, g:visual_end (if in visual mode)        │
 └───────────────────────┬───────────────────────────────────┘
                         │
                         ▼
 ┌───────────────────────────────────────────────────────────┐
 │ Build context string:                                     │
-│ - Terminal buffer: "Terminal buffer - no context"        │
-│ - NERDTree: "NERDTree file browser - no context"         │
-│ - Visual selection: Lines X-Y with content               │
-│ - Normal mode: Current line with content                 │
+│ - Terminal buffer: "Terminal buffer - no context"         │
+│ - NERDTree: "NERDTree file browser - no context"          │
+│ - Visual selection: Lines X-Y with content                │
+│ - Normal mode: Current line with content                  │
 └───────────────────────┬───────────────────────────────────┘
                         │
                         ▼
 ┌───────────────────────────────────────────────────────────┐
 │ PushContextUpdate()                                       │
 │ - Build JSON message                                      │
-│ - Send via ch_sendraw(g:mcp_channel, json + "\n")        │
+│ - Send via ch_sendraw(g:mcp_channel, json + "\n")         │
 └───────────────────────────────────────────────────────────┘
 ```
 
 **Design Decision**: High-frequency updates
+
 - Sends context on every cursor move
 - Ensures Q CLI always has latest state
 - Network overhead minimal (Unix socket, local)
@@ -645,16 +659,19 @@ WriteContext() called
 ### Virtual Text Implementation
 
 Vim's text properties system (`:help text-prop-intro`):
+
 - Attach virtual text to buffer lines
 - Text appears above/below/inline with actual content
 - Survives buffer modifications (within limits)
 
 **Property Type Definition**:
+
 ```vim
 call prop_type_add('q_virtual_text', {'highlight': 'qtext'})
 ```
 
 **Highlight Group**:
+
 ```vim
 highlight qtext ctermbg=237 ctermfg=250 cterm=italic 
                 guibg=#2a2a2a guifg=#d0d0d0 gui=italic
@@ -719,10 +736,11 @@ Input: line_num=42, text="SECURITY: Validate input\nUse schema validation", emoj
    - Displayed on first line only
 
 3. **Alignment**: Continuation lines aligned with first line text
+4. 
    ```
     🔒 ┤ SECURITY: Validate input
-        │ Use schema validation
-        │ Consider using JSON Schema
+       │ Use schema validation
+       │ Consider using JSON Schema
    ```
 
 4. **Padding**: Window width + 30 characters
@@ -765,11 +783,12 @@ For each entry:
                         │
                         ▼
 ┌───────────────────────────────────────────────────────────┐
-│ 4. Call s:DoAddVirtualText(line_num, text, hl, emoji)    │
+│ 4. Call s:DoAddVirtualText(line_num, text, hl, emoji)     │
 └───────────────────────────────────────────────────────────┘
 ```
 
 **Design Decision**: Pattern-based line matching
+
 - **Why**: Line numbers change when file is edited
 - **How**: Store line text content, search for it later
 - **Fallback**: `line_number_hint` for disambiguation or when text not found
@@ -798,6 +817,7 @@ endif
 ```
 
 **Design Decision**: Three-tier matching
+
 - Exact match: Fastest, most reliable
 - Trimmed match: Handles whitespace differences
 - Substring match: Handles partial line specifications
@@ -855,6 +875,7 @@ Q CLI calls add_to_quickfix()
 ### Annotation on Buffer Load
 
 **Autocmd Setup**:
+
 ```vim
 augroup QQuickfixAnnotate
   autocmd!
@@ -863,6 +884,7 @@ augroup END
 ```
 
 **Annotation Flow**:
+
 ```
 User navigates to quickfix entry (or switches buffers)
         │
@@ -896,8 +918,8 @@ s:AnnotateCurrentBuffer() called
 ┌───────────────────────────────────────────────────────────┐
 │ 4. For each entry:                                        │
 │    - Extract emoji from text or use type-based default    │
-│      (E='🔴', W='🔶', I='🟢')                              │
-│    - Call s:DoAddVirtualText(entry.lnum, text, emoji)    │
+│      (E='🔴', W='🔶', I='🟢')                            │
+│    - Call s:DoAddVirtualText(entry.lnum, text, emoji)     │
 └───────────────────────────────────────────────────────────┘
 ```
 
@@ -927,13 +949,13 @@ For each entry in current file:
                         ▼
 ┌───────────────────────────────────────────────────────────┐
 │ 2. Search for line_text in current file                   │
-│    line_num = s:FindLineByTextInFile(line_text, file)    │
+│    line_num = s:FindLineByTextInFile(line_text, file)     │
 └───────────────────────┬───────────────────────────────────┘
                         │
                         ▼
 ┌───────────────────────────────────────────────────────────┐
 │ 3. Update entry if line number changed                    │
-│    if line_num > 0 && line_num != entry.lnum:            │
+│    if line_num > 0 && line_num != entry.lnum:             │
 │      items[i].lnum = line_num                             │
 │      updated += 1                                         │
 └───────────────────────┬───────────────────────────────────┘
@@ -942,7 +964,7 @@ For each entry in current file:
 ┌───────────────────────────────────────────────────────────┐
 │ 4. Update quickfix list if any changes                    │
 │    if updated > 0:                                        │
-│      call setqflist([], 'r', {'items': items})           │
+│      call setqflist([], 'r', {'items': items})            │
 └───────────────────────────────────────────────────────────┘
 ```
 
@@ -968,6 +990,7 @@ For each entry in current file:
 #### Case 1: Multiple Matches for Same Line Text
 
 **Problem**: Same line appears multiple times in file
+
 ```python
 return None  # Line 10
 return None  # Line 25
@@ -975,6 +998,7 @@ return None  # Line 40
 ```
 
 **Solution**: Use `line_number_hint` to disambiguate
+
 ```vim
 let line_matches = s:FindAllLinesByText(entry.line)
 if len(line_matches) > 1 && has_key(entry, 'line_number_hint')
@@ -997,6 +1021,7 @@ endif
 **Problem**: Line was deleted or significantly changed
 
 **Solution**: Skip annotation for that entry
+
 ```vim
 if line_num == 0
   let skipped += 1
@@ -1011,6 +1036,7 @@ endif
 **Problem**: Quickfix entry for file not in any buffer
 
 **Solution**: Read file directly from disk
+
 ```vim
 function! s:FindLineByTextInFile(line_text, filename)
   if !filereadable(a:filename)
@@ -1027,6 +1053,7 @@ endfunction
 **Problem**: Vim reloads file → text properties lost
 
 **Solution**: `FileChangedShellPost` autocmd
+
 ```vim
 augroup AutoRead
   autocmd FileChangedShellPost * call s:AnnotateCurrentBuffer()
@@ -1034,6 +1061,7 @@ augroup END
 ```
 
 **Flow**:
+
 ```
 External tool modifies file (e.g., git checkout)
         │
@@ -1061,6 +1089,7 @@ Annotations re-added at new line numbers
 **Problem**: `BufEnter` fires on every quickfix navigation, even within same file
 
 **Solution**: Idempotent annotation function
+
 ```vim
 " In s:DoAddVirtualText():
 let existing_props = prop_list(a:line_num, {'type': l:prop_type})
@@ -1073,6 +1102,7 @@ endfor
 ```
 
 **Why This Works**:
+
 - Checks if annotation already exists before adding
 - Uses first line of text as unique identifier
 - Prevents duplicate annotations on repeated `BufEnter`
@@ -1085,6 +1115,7 @@ endfor
 ### Context Update Frequency
 
 **High-frequency events**: `CursorMoved`, `CursorMovedI`
+
 - Fires on every cursor movement
 - Sends JSON message over Unix socket
 - **Mitigation**: Unix sockets are very fast (local IPC)
@@ -1095,11 +1126,13 @@ endfor
 ### Annotation Rendering
 
 **Text properties are efficient**:
+
 - Vim's native implementation
 - No custom rendering logic needed
 - Survives buffer modifications (within limits)
 
 **Padding trade-off**:
+
 - Pads to window width + 30 for full-line background
 - Uses more memory for longer strings
 - **Alternative**: Dynamic padding on window resize
@@ -1108,6 +1141,7 @@ endfor
 ### File Reading for Pattern Matching
 
 **`readfile()` on every reindex**:
+
 - Reads entire file from disk
 - Could be slow for large files
 - **Mitigation**: Only reads files with quickfix entries
@@ -1151,11 +1185,13 @@ endfor
 ### Enable Verbose Logging
 
 **MCP Server**:
+
 ```python
 logging.basicConfig(level=logging.DEBUG)
 ```
 
 **Vim**:
+
 ```vim
 :set verbose=9
 :set verbosefile=/tmp/vim-debug.log
