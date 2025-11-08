@@ -137,11 +137,7 @@ Create or edit `~/.aws/amazonq/mcp.json`:
 {
   "mcpServers": {
     "vim-context": {
-      "command": "python",
-      "args": ["/path/to/vim-q-connect/mcp-server/main.py"],
-      "env": {
-        "SOCKET_DIR": "/tmp"
-      }
+      "command": "/path/to/vim-q-connect/mcp-server/run-mcp.sh"
     }
   }
 }
@@ -154,11 +150,7 @@ Create `~/.aws/amazonq/cli-agents/vim-context.json`:
 ```json
 {
   "name": "vim-context",
-  "command": "python",
-  "args": ["/path/to/vim-q-connect/mcp-server/main.py"],
-  "env": {
-    "SOCKET_DIR": "/tmp"
-  }
+  "command": "/path/to/vim-q-connect/mcp-server/run-mcp.sh"
 }
 ```
 
@@ -168,15 +160,7 @@ Create `~/.aws/amazonq/cli-agents/vim-context.json`:
 
 ### Socket Location
 
-By default, the MCP server creates a Unix socket at `.vim-q-mcp.sock` in the directory specified by the `SOCKET_DIR` environment variable.
-
-**Recommended**: Set `SOCKET_DIR` to a temporary directory:
-
-```bash
-export SOCKET_DIR=/tmp
-```
-
-Add this to your `~/.bashrc`, `~/.zshrc`, or shell configuration file.
+The MCP server automatically creates a Unix socket at `.vim-q-mcp.sock` in the current working directory when Q CLI starts. The `run-mcp.sh` script handles socket path configuration automatically.
 
 ### Vim Settings
 
@@ -184,7 +168,7 @@ The plugin works out of the box with no configuration required. However, you can
 
 ```vim
 " Optional: Override socket path (default: getcwd() . '/.vim-q-mcp.sock')
-let g:vim_q_connect_socket_path = '/tmp/.vim-q-mcp.sock'
+let g:vim_q_connect_socket_path = '/custom/path/.vim-q-mcp.sock'
 ```
 
 ### MCP Server Logging
@@ -386,7 +370,7 @@ ps aux | grep "python.*main.py"
 **Check socket exists**:
 
 ```bash
-ls -la /tmp/.vim-q-mcp.sock  # or your SOCKET_DIR
+ls -la .vim-q-mcp.sock  # in current working directory
 ```
 
 **Check Q CLI configuration**:
@@ -458,15 +442,7 @@ If you need to use a specific socket path:
 let g:vim_q_connect_socket_path = '/custom/path/.vim-q-mcp.sock'
 ```
 
-Make sure the MCP server uses the same path:
-
-```json
-{
-  "env": {
-    "SOCKET_DIR": "/custom/path"
-  }
-}
-```
+Make sure to update the socket path in Vim as well.
 
 ### Running MCP Server Standalone
 
@@ -474,7 +450,7 @@ For testing or development:
 
 ```bash
 cd mcp-server
-SOCKET_DIR=/tmp python main.py
+./run-mcp.sh
 ```
 
 Then connect from Vim with `:QConnect`.
