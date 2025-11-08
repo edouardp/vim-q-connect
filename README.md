@@ -1,294 +1,483 @@
 # vim-q-connect
 
-A Vim plugin that provides bidirectional editor integration with Q CLI via Model Context Protocol (MCP). Enables real-time context sharing, remote navigation, and virtual text annotations.
+**Seamlessly integrate Amazon Q CLI with Vim for AI-powered coding assistance**
 
-## Features
+vim-q-connect bridges the gap between Vim and Amazon Q CLI, enabling real-time context sharing and intelligent code assistance directly in your editor. Ask Q about your code, get inline suggestions, navigate to issues, and receive AI-powered code reviews—all without leaving Vim.
 
-- **Real-time Context Sharing**: Automatically sends cursor position, file content, and visual selections to Q CLI
-- **Remote Navigation**: Q CLI can navigate to specific lines and files in your editor
-- **Virtual Text Annotations**: Display inline code review comments, suggestions, and analysis results
-- **Low-latency Communication**: Unix domain socket for fast IPC between Vim and Q CLI
-- **Thread-safe**: Handles concurrent requests and multiple annotation operations
+## What Does It Do?
+
+vim-q-connect creates a bidirectional connection between Vim and Q CLI using the Model Context Protocol (MCP):
+
+- **🔍 Context Awareness**: Q CLI automatically knows what code you're looking at—no need to copy-paste
+- **🎯 Smart Navigation**: Q can jump your cursor to specific lines and files
+- **💬 Inline Annotations**: Get code reviews, security findings, and suggestions displayed directly above relevant lines
+- **⚡ Real-time**: Updates happen instantly as you move through your code
+- **🔗 Quickfix Integration**: Code analysis results automatically populate Vim's quickfix list with inline annotations
+
+### Example Workflows
+
+**Code Review**:
+```
+You: "Review this function for security issues"
+Q: [Analyzes code, adds inline annotations]
+```
+```python
+def process_user_input(data):
+    # 🔒 SECURITY: Missing input validation
+    # Validate and sanitize user input before processing
+    # Consider using a schema validation library
+    return database.query(data)
+```
+
+**Navigate to Issues**:
+```
+You: "Check this codebase for quality issues"
+Q: [Populates quickfix list with findings]
+```
+Navigate through issues with `:cnext`/`:cprev`, annotations appear automatically.
+
+**Explain Code**:
+```
+You: "What does this function do?"
+Q: [Reads your current cursor position and explains the code]
+```
+
+## Requirements
+
+### Vim
+- **Version**: Vim 8.1+ or Neovim 0.5+
+- **Feature**: Text properties support (`:echo has('textprop')` should return 1)
+- **OS**: Linux or macOS (Unix domain sockets required)
+
+### MCP Server
+- **Python**: 3.8 or higher
+- **Dependencies**: FastMCP library (installed via `uv` or `pip`)
+
+### Q CLI
+- Amazon Q CLI installed and configured
+- MCP server configuration (see [Configuration](#configuration) below)
 
 ## Installation
 
-### Using vim-plug
+### Step 1: Install the Vim Plugin
 
-Add to your `.vimrc`:
+#### Using vim-plug
+
+Add to your `.vimrc` or `init.vim`:
 
 ```vim
 Plug 'edouardp/vim-q-connect'
 ```
 
-Then run `:PlugInstall`
+Then run:
+```vim
+:PlugInstall
+```
 
-### Manual Installation
+#### Using Vundle
 
-Clone this repository to your Vim plugin directory:
+Add to your `.vimrc`:
+```vim
+Plugin 'edouardp/vim-q-connect'
+```
+
+Then run:
+```vim
+:PluginInstall
+```
+
+#### Manual Installation
 
 ```bash
-git clone https://github.com/edouardp/vim-q-connect.git ~/.vim/plugged/vim-q-connect
+git clone https://github.com/edouardp/vim-q-connect.git ~/.vim/pack/plugins/start/vim-q-connect
 ```
 
-## Usage
+### Step 2: Install MCP Server Dependencies
 
-### Basic Commands
+The MCP server requires Python 3.8+ and the FastMCP library.
 
-- `:QConnect` - Start tracking and send context to Q CLI
-- `:QConnect!` - Stop tracking and disconnect
-- `:QVirtualTextClear` - Clear all virtual text annotations from the current buffer
+#### Using uv (recommended)
 
-### Workflow
-
-1. Start Q CLI with MCP server support
-2. In Vim, run `:QConnect` to establish connection
-3. Q CLI can now:
-   - Read your current editor context with `get_editor_context`
-   - Navigate to specific lines with `goto_line`
-   - Add inline annotations with `add_virtual_text`
-   - Query existing annotations with `get_annotations_above_current_position`
-
-## MCP Tools Provided
-
-### get_editor_context
-
-Retrieves current editor state including:
-- Current filename and line number
-- Visible content around cursor
-- Visual selection range (if active)
-- File metadata (total lines, modified status, encoding, line endings)
-
-**Use cases**: Code review, debugging, context-aware assistance
-
-### goto_line
-
-Navigate to a specific line in Vim, optionally opening a different file.
-
-**Parameters**:
-- `line_number` (int): Target line number (1-indexed)
-- `filename` (str, optional): File to open before navigation
-
-**Use cases**: Jump to error locations, navigate to definitions, follow references
-
-### add_virtual_text
-
-Add inline annotations above specific lines. Supports batch operations for efficiency.
-
-**Parameters**:
-- `entries` (list[dict]): List of annotation entries, each containing:
-  - `line` (str): Exact line content to match (preferred - robust to edits)
-  - `line_number` (int): Alternative line number (use only when line content unknown)
-  - `text` (str): Annotation text (supports multi-line with `\n`)
-  - `highlight` (str, optional): Vim highlight group
-  - `emoji` (str, optional): Single emoji for visual emphasis
-
-**Use cases**: 
-- Code reviews with inline feedback
-- Static analysis results
-- Security findings
-- Performance suggestions
-- Documentation and examples
-- Test coverage gaps
-
-**Example**:
-```python
-add_virtual_text([
-    {
-        "line": "def process_data(input):",
-        "text": "SECURITY: Validate input before processing\nConsider using schema validation",
-        "emoji": "🔒"
-    },
-    {
-        "line_number": 45,
-        "text": "PERFORMANCE: This loop is O(n²)\nConsider using a hash map for O(n) complexity",
-        "emoji": "⚡"
-    }
-])
+```bash
+cd ~/.vim/pack/plugins/start/vim-q-connect/mcp-server
+uv sync
 ```
 
-### get_annotations_above_current_position
+#### Using pip
 
-Retrieves all virtual text annotations displayed above the current cursor position.
-
-**Returns**: JSON array of annotations with line numbers, types, and text content
-
-**Use cases**: Query existing annotations, implement annotation management, debugging
-
-## How it Works
-
-### Architecture
-
-```
-┌─────────────┐         Unix Socket          ┌──────────────┐
-│             │◄────────────────────────────►│              │
-│  Vim Plugin │   JSON-RPC Messages          │  MCP Server  │
-│             │                              │              │
-└─────────────┘                              └──────┬───────┘
-      │                                             │
-      │ Context Updates                             │ MCP Protocol
-      │ Navigation Commands                         │
-      │ Annotation Requests                         │
-      │                                             ▼
-      │                                      ┌──────────────┐
-      └──────────────────────────────────────┤    Q CLI     │
-                                             └──────────────┘
+```bash
+cd ~/.vim/pack/plugins/start/vim-q-connect/mcp-server
+pip install fastmcp
 ```
 
-### Communication Flow
+### Step 3: Configure Q CLI
 
-1. **Connection**: Plugin connects to MCP server's Unix socket at `.vim-q-mcp.sock`
-2. **Context Updates**: On cursor movement, plugin sends `context_update` messages
-3. **Tool Invocation**: Q CLI calls MCP tools which send requests to Vim via socket
-4. **Response Handling**: Vim processes requests and sends responses back through socket
+Q CLI needs to know about the MCP server. Add the server configuration to your Q CLI MCP settings.
 
-### Message Protocol
+#### Option A: Using mcp.json (if supported)
 
-All messages are JSON-RPC formatted and newline-delimited:
+Create or edit `~/.aws/amazonq/mcp.json`:
 
-**Context Update** (Vim → Server):
 ```json
 {
-  "method": "context_update",
-  "params": {
-    "filename": "main.py",
-    "line": 42,
-    "context": "def foo():\n    return bar",
-    "visual_start": 0,
-    "visual_end": 0,
-    "total_lines": 100,
-    "modified": false,
-    "encoding": "utf-8",
-    "line_endings": "unix"
-  }
-}
-```
-
-**Navigation Command** (Server → Vim):
-```json
-{
-  "method": "goto_line",
-  "params": {
-    "line": 42,
-    "filename": "main.py"
-  }
-}
-```
-
-**Virtual Text** (Server → Vim):
-```json
-{
-  "method": "add_virtual_text_batch",
-  "params": {
-    "entries": [
-      {
-        "line": "def foo():",
-        "text": "This function needs documentation",
-        "emoji": "📝"
+  "mcpServers": {
+    "vim-context": {
+      "command": "python",
+      "args": ["/path/to/vim-q-connect/mcp-server/main.py"],
+      "env": {
+        "SOCKET_DIR": "/tmp"
       }
-    ]
+    }
   }
 }
 ```
+
+#### Option B: Using CLI Agents Directory
+
+Create `~/.aws/amazonq/cli-agents/vim-context.json`:
+
+```json
+{
+  "name": "vim-context",
+  "command": "python",
+  "args": ["/path/to/vim-q-connect/mcp-server/main.py"],
+  "env": {
+    "SOCKET_DIR": "/tmp"
+  }
+}
+```
+
+**Important**: Replace `/path/to/vim-q-connect` with the actual path where you installed the plugin.
 
 ## Configuration
 
 ### Socket Location
 
-By default, the MCP server creates the socket in the directory specified by `SOCKET_DIR` environment variable, or current directory if not set.
+By default, the MCP server creates a Unix socket at `.vim-q-mcp.sock` in the directory specified by the `SOCKET_DIR` environment variable.
+
+**Recommended**: Set `SOCKET_DIR` to a temporary directory:
 
 ```bash
 export SOCKET_DIR=/tmp
 ```
 
-### Logging
+Add this to your `~/.bashrc`, `~/.zshrc`, or shell configuration file.
 
-The MCP server logs to stdout with INFO level by default. Adjust in `mcp-server/main.py`:
+### Vim Settings
 
+The plugin works out of the box with no configuration required. However, you can customize the socket path if needed:
+
+```vim
+" Optional: Override socket path (default: getcwd() . '/.vim-q-mcp.sock')
+let g:vim_q_connect_socket_path = '/tmp/.vim-q-mcp.sock'
+```
+
+### MCP Server Logging
+
+To enable debug logging, edit `mcp-server/main.py`:
+
+```python
+# Change INFO to DEBUG for verbose logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+```
+
+## Usage
+
+### Starting the Connection
+
+1. **Start Q CLI** (this automatically starts the MCP server)
+   ```bash
+   q chat
+   ```
+
+2. **In Vim, connect to the MCP server**
+   ```vim
+   :QConnect
+   ```
+
+   You should see: `Q MCP channel connected`
+
+3. **Start coding!** Q CLI now has real-time access to your editor context.
+
+### Stopping the Connection
+
+```vim
+:QConnect!
+```
+
+This disconnects from the MCP server and stops sending context updates.
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `:QConnect` | Connect to Q CLI MCP server and start context tracking |
+| `:QConnect!` | Disconnect and stop context tracking |
+| `:QVirtualTextClear` | Clear all inline annotations from current buffer |
+| `:QQuickfixAnnotate` | Manually annotate quickfix entries (usually automatic) |
+
+## How to Use with Q CLI
+
+Once connected, Q CLI can access your editor context through several tools:
+
+### 1. Ask Questions About Your Code
+
+Q automatically knows what code you're looking at:
+
+```
+You: "What does this function do?"
+You: "How can I optimize this?"
+You: "Are there any security issues here?"
+```
+
+Q will use `get_editor_context` to read your current file, cursor position, and any selected text.
+
+### 2. Get Code Reviews with Inline Annotations
+
+```
+You: "Review this code for best practices"
+You: "Check for security vulnerabilities"
+You: "Analyze performance bottlenecks"
+```
+
+Q will add inline annotations above relevant lines using `add_virtual_text`:
+
+```python
+def authenticate(username, password):
+    # 🔒 SECURITY: Password stored in plain text
+    # Use a secure hashing algorithm like bcrypt or Argon2
+    # Never store passwords in plain text
+    if users[username] == password:
+        return True
+```
+
+### 3. Navigate to Specific Code
+
+Q can move your cursor to specific locations:
+
+```
+You: "Show me the main function"
+You: "Go to line 42"
+```
+
+Q uses `goto_line` to navigate your editor.
+
+### 4. Populate Quickfix List
+
+```
+You: "Find all TODO comments"
+You: "Check this codebase for issues"
+```
+
+Q can add findings to Vim's quickfix list using `add_to_quickfix`. Navigate with:
+- `:cnext` - Next issue
+- `:cprev` - Previous issue
+- `:copen` - Open quickfix window
+- `:cclose` - Close quickfix window
+
+Annotations appear automatically when you navigate to each issue.
+
+## Features in Detail
+
+### Real-time Context Sharing
+
+The plugin automatically sends your editor state to Q CLI whenever you:
+- Move the cursor
+- Change files
+- Select text (visual mode)
+- Edit content
+
+Q always knows:
+- What file you're viewing
+- What line your cursor is on
+- What text you have selected
+- File metadata (encoding, line endings, modification status)
+
+### Inline Annotations
+
+Annotations appear as virtual text above code lines with:
+- **Emoji indicators** for visual categorization (🔒 security, ⚡ performance, etc.)
+- **Multi-line support** for detailed explanations
+- **Syntax highlighting** with customizable colors
+- **Persistence** across buffer switches (until cleared)
+
+**Customizing Annotation Colors**:
+
+```vim
+" Add to your .vimrc
+highlight qtext ctermbg=235 ctermfg=248 cterm=italic guibg=#1c1c1c guifg=#a8a8a8 gui=italic
+```
+
+### Quickfix Integration
+
+When Q adds entries to the quickfix list:
+1. Entries are automatically sorted by file and line number
+2. Annotations appear when you navigate to each entry
+3. Line numbers update automatically if files are modified externally
+4. Annotations persist across file reloads (via autoread)
+
+### Autoread Support
+
+The plugin enables Vim's `autoread` feature and automatically:
+- Detects when files change externally (git checkout, build tools, etc.)
+- Reloads files automatically
+- Re-applies annotations at correct line numbers
+- Updates quickfix entries to match new line numbers
+
+## Troubleshooting
+
+### "Q MCP channel connected" doesn't appear
+
+**Check MCP server is running**:
+```bash
+ps aux | grep "python.*main.py"
+```
+
+**Check socket exists**:
+```bash
+ls -la /tmp/.vim-q-mcp.sock  # or your SOCKET_DIR
+```
+
+**Check Q CLI configuration**:
+```bash
+cat ~/.aws/amazonq/cli-agents/vim-context.json
+```
+
+### Annotations don't appear
+
+**Verify text properties support**:
+```vim
+:echo has('textprop')
+```
+Should return `1`. If not, upgrade Vim to 8.1+.
+
+**Check for conflicting plugins**:
+Temporarily disable other plugins to isolate the issue.
+
+**Verify connection**:
+```vim
+:echo ch_status(g:mcp_channel)
+```
+Should return `open`.
+
+### Q CLI doesn't see my code
+
+**Trigger a context update**:
+Move your cursor or switch buffers to send a fresh context update.
+
+**Reconnect**:
+```vim
+:QConnect!
+:QConnect
+```
+
+**Check you're in a normal buffer**:
+The plugin doesn't send context for terminal buffers, NERDTree, or other special buffers.
+
+### Annotations appear in wrong locations after file changes
+
+This should be handled automatically. If not:
+
+**Manually refresh**:
+```vim
+:QQuickfixAnnotate
+```
+
+**Check autoread is enabled**:
+```vim
+:set autoread?
+```
+Should show `autoread`.
+
+## Advanced Usage
+
+### Custom Socket Path
+
+If you need to use a specific socket path:
+
+```vim
+let g:vim_q_connect_socket_path = '/custom/path/.vim-q-mcp.sock'
+```
+
+Make sure the MCP server uses the same path:
+
+```json
+{
+  "env": {
+    "SOCKET_DIR": "/custom/path"
+  }
+}
+```
+
+### Running MCP Server Standalone
+
+For testing or development:
+
+```bash
+cd mcp-server
+SOCKET_DIR=/tmp python main.py
+```
+
+Then connect from Vim with `:QConnect`.
+
+### Debugging
+
+**Enable verbose Vim logging**:
+```vim
+:set verbose=9
+:set verbosefile=/tmp/vim-debug.log
+```
+
+**Enable MCP server debug logging**:
+Edit `mcp-server/main.py`:
 ```python
 logging.basicConfig(level=logging.DEBUG)
 ```
 
-## Development
-
-### Project Structure
-
-```
-vim-q-connect/
-├── plugin/
-│   └── vim_q_connect.vim    # Vim plugin implementation
-├── mcp-server/
-│   └── main.py              # MCP server with FastMCP
-└── README.md
+**Inspect text properties**:
+```vim
+:call prop_list(line('.'))
 ```
 
-### Running the MCP Server Standalone
-
-```bash
-cd mcp-server
-python main.py
+**View quickfix user data**:
+```vim
+:echo getqflist({'all': 1}).items[0].user_data
 ```
 
-### Testing
+## Technical Details
 
-1. Start the MCP server
-2. Open Vim and run `:QConnect`
-3. Use Q CLI to interact with editor context
-
-## Troubleshooting
-
-### Connection Issues
-
-**Problem**: `:QConnect` doesn't establish connection
-
-**Solutions**:
-- Ensure MCP server is running
-- Check socket file exists: `ls -la .vim-q-mcp.sock`
-- Verify `SOCKET_DIR` environment variable
-- Check server logs for errors
-
-### Annotations Not Appearing
-
-**Problem**: Virtual text annotations don't show in Vim
-
-**Solutions**:
-- Ensure Vim version supports text properties (Vim 8.1+)
-- Check `:echo has('textprop')` returns 1
-- Verify connection with `:QConnect`
-- Check for conflicting plugins
-
-### Stale Context
-
-**Problem**: Q CLI receives outdated editor context
-
-**Solutions**:
-- Move cursor to trigger context update
-- Reconnect with `:QConnect!` then `:QConnect`
-- Check Vim logs for connection errors
-
-## Integration with Q CLI
-
-Q CLI manages the MCP server lifecycle automatically. The plugin connects to an existing server when you run `:QConnect`.
-
-### Typical Workflow
-
-1. Start Q CLI (automatically starts MCP server)
-2. Open Vim and run `:QConnect`
-3. Ask Q CLI questions about your code: "What does this function do?"
-4. Q CLI uses `get_editor_context` to read your current code
-5. Q CLI can add annotations: "Review this code for security issues"
-6. Annotations appear inline in your editor
-
-## Requirements
-
-- Vim 8.1+ with text properties support
-- Python 3.8+ (for MCP server)
-- FastMCP library
-- Unix-like operating system (Linux, macOS)
-
-## License
-
-MIT
+For developers interested in how vim-q-connect works internally, see [DESIGN_DECISIONS.md](DESIGN_DECISIONS.md) for:
+- Architecture and communication protocols
+- Threading model and state management
+- Annotation system implementation
+- Quickfix integration details
+- Performance considerations
 
 ## Contributing
 
-Contributions welcome! Please open issues or pull requests on GitHub.
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+For bug reports and feature requests, please open an issue on GitHub.
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Support
+
+- **Issues**: https://github.com/edouardp/vim-q-connect/issues
+- **Documentation**: See [DESIGN_DECISIONS.md](DESIGN_DECISIONS.md) for technical details
+- **Q CLI Documentation**: https://docs.aws.amazon.com/amazonq/
+
+## Acknowledgments
+
+Built with:
+- [FastMCP](https://github.com/jlowin/fastmcp) - MCP server framework
+- Vim's text properties system
+- Amazon Q CLI and Model Context Protocol
