@@ -599,9 +599,13 @@ function! s:DoAddToQuickfix(entries)
     
     " Resolve line number manually
     if has_key(entry, 'line')
-        let line_num = s:FindLineByTextInFile(entry.line, filename)
+      let line_number_hint = get(entry, 'line_number_hint', 0)
+      let line_num = s:FindLineByTextInFile(entry.line, filename, line_number_hint)
       if line_num > 0
         let user_data = {'line_text': entry.line}
+        if line_number_hint > 0
+          let user_data.line_number_hint = line_number_hint
+        endif
       else
         let skipped += 1
         continue
@@ -702,7 +706,9 @@ function! s:SetupQuickfixAutocmd()
 endfunction
 
 " Find line number by searching for text in a specific file
-function! s:FindLineByTextInFile(line_text, filename)
+function! s:FindLineByTextInFile(line_text, filename, ...)
+  let line_number_hint = a:0 > 0 ? a:1 : 0
+  
   " Read file directly instead of using buffers
   if !filereadable(a:filename)
     echom "File not readable: " . a:filename
@@ -710,23 +716,55 @@ function! s:FindLineByTextInFile(line_text, filename)
   endif
   
   let lines = readfile(a:filename)
+  let matches = []
   
+  " Collect all matches with their line numbers
   for i in range(len(lines))
     " Try exact match first
     if lines[i] ==# a:line_text
-      return i + 1
-    endif
-    " Try trimmed match
-    if trim(lines[i]) ==# trim(a:line_text)
-      return i + 1
-    endif
-    " Try substring match for partial lines
-    if stridx(lines[i], a:line_text) >= 0
-      return i + 1
+      call add(matches, i + 1)
     endif
   endfor
   
-  return 0
+  " If no exact matches, try trimmed matches
+  if empty(matches)
+    for i in range(len(lines))
+      if trim(lines[i]) ==# trim(a:line_text)
+        call add(matches, i + 1)
+      endif
+    endfor
+  endif
+  
+  " If still no matches, try substring matches
+  if empty(matches)
+    for i in range(len(lines))
+      if stridx(lines[i], a:line_text) >= 0
+        call add(matches, i + 1)
+      endif
+    endfor
+  endif
+  
+  " Return best match
+  if empty(matches)
+    return 0
+  elseif len(matches) == 1
+    return matches[0]
+  elseif line_number_hint > 0
+    " Find closest match to hint
+    let best_match = matches[0]
+    let best_distance = abs(matches[0] - line_number_hint)
+    for match in matches[1:]
+      let distance = abs(match - line_number_hint)
+      if distance < best_distance
+        let best_match = match
+        let best_distance = distance
+      endif
+    endfor
+    return best_match
+  else
+    " No hint, return first match
+    return matches[0]
+  endif
 endfunction
 
 " Refresh quickfix line numbers for current file before annotation
@@ -748,7 +786,8 @@ function! s:RefreshQuickfixPatterns()
      \ has_key(entry.user_data, 'line_text')
       
       " Find current line number for the text
-      let line_num = s:FindLineByTextInFile(entry.user_data.line_text, current_file)
+      let line_number_hint = has_key(entry.user_data, 'line_number_hint') ? entry.user_data.line_number_hint : 0
+      let line_num = s:FindLineByTextInFile(entry.user_data.line_text, current_file, line_number_hint)
       
       if line_num > 0 && line_num != entry.lnum
         let items[i].lnum = line_num

@@ -483,8 +483,7 @@ def add_virtual_text(entries: list[dict]) -> str:
 
     Use optional emoji sparingly - only when it adds semantic meaning.
 
-    Common working emoji: 🤖🔥⭐💡✅❌📝🚀🎯🔧⚡🎉📊🔍💻📱🌟🎨🏆🔒🔑📈📉🎵
-    Note: Warning sign ⚠️ may not render properly in some Vim environments. Do not use.
+    Common working emoji: 🤖🔥⭐💡✅❌⚠️📝🚀🎯🔧⚡🎉📊🔍💻📱🌟🎨🏆🔒🔑📈📉🎵
     """
     
     if not vim_state.is_connected():
@@ -520,11 +519,12 @@ def add_to_quickfix(entries: list[dict]) -> str:
             - text (str): Description of the issue or finding
             - filename (str, optional): File path (defaults to current file)
             - type (str, optional): Entry type - 'E' (error), 'W' (warning), 'I' (info), 'N' (note)
+            - line_number_hint (int, optional): Hint for tie-breaking when multiple matches exist
     
     Example:
         add_to_quickfix([
-            {"line": "def process_data(input):", "text": "Missing input validation", "type": "E"},
-            {"line_number": 45, "text": "Performance issue: O(n²) complexity", "type": "W"}
+            {"line": "def process_data(input):", "text": "🔍 Missing input validation", "type": "E", "line_number_hint": 42},
+            {"line_number": 45, "text": "🚀 Performance issue: O(n²) complexity", "type": "W"}
         ])
     """
     
