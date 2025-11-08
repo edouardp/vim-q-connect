@@ -1253,57 +1253,62 @@ def review(target: str = None):
 
 ### Available Prompts
 
-#### `@review` - Code Analysis Workflow
+#### `/review` - Comprehensive Code Analysis
 
-**Purpose**: Comprehensive code review for security, quality, and performance
+**Purpose**: Thorough code review for security, quality, performance, and best practices
 
 **Context Detection**:
-
 - If `target` parameter provided: Reviews specified target
-- If no target + Vim connected: Reviews current file
+- If no target + Vim connected: Reviews current file/selection
 - Otherwise: Reviews entire codebase
 
 **Tool Usage Pattern**:
-
 ```
-1. Analyze code files
+1. Analyze code files using get_editor_context()
 2. Use add_to_quickfix() for each issue found
 3. Format entries with:
    - Exact line content (for robust positioning)
-   - Multi-line descriptions with emoji
-   - Appropriate severity levels (E/W/I)
+   - Multi-line descriptions with emoji indicators
+   - Appropriate severity levels (E/W/I/N)
+4. Use add_virtual_text() for inline annotations
 ```
 
 **Example Output Structure**:
-
 ```
 🔒 SECURITY: Hardcoded password detected
 Passwords in source code can be exposed in version control
 Move to environment variables or secure configuration
 ```
 
-#### `@explain` - Code Documentation
+**Best Used When**: You want thorough analysis with actionable findings that populate quickfix list for navigation.
 
-**Purpose**: Explain current code functionality and implementation
+#### `/explain` - Code Understanding
+
+**Purpose**: Detailed explanation of current code functionality and implementation
 
 **Context Usage**:
+- Always uses current editor context (file, cursor position, selection)
+- Provides high-level purpose and step-by-step explanation
+- Identifies important details, edge cases, and potential improvements
 
-- Always uses `get_editor_context()` to see current cursor position
-- Provides step-by-step explanation of code logic
-- Identifies potential issues or improvements
+**Output Includes**:
+1. What the code does (high-level purpose)
+2. How it works (step-by-step explanation)
+3. Important details or edge cases
+4. Potential issues or improvements
 
-#### `@fix` - Intelligent Issue Resolution
+**Best Used When**: Reading unfamiliar code or need to understand complex logic.
 
-**Purpose**: Fix code issues with context-aware detection
+#### `/fix` - Intelligent Issue Resolution
 
-**Smart Context Detection**:
+**Purpose**: Fix code issues with smart context-aware detection
 
-1. **Quickfix Priority**: Checks for current quickfix entry first
+**Smart Context Detection Priority**:
+1. **Quickfix Priority**: Detects current quickfix entry first
 2. **Editor Fallback**: Uses current cursor position if no quickfix
 3. **Parameter Override**: Uses provided target if specified
 
 **Quickfix Integration Flow**:
-
 ```python
 # Create unique request ID for response correlation
 request_id = str(uuid.uuid4())
@@ -1321,16 +1326,31 @@ vim_state.request_queue.put(('get_current_quickfix', {
 response_type, data = response_queue.get(timeout=2.0)
 ```
 
-#### `@add_documentation` - Documentation Generation
+**Fix Characteristics**:
+- Addresses root cause, not just symptoms
+- Follows best practices and coding standards
+- Minimal and focused changes
+- Includes explanation of changes
 
-**Purpose**: Add appropriate documentation to current code
+**Best Used When**: You have specific issues to resolve or want to fix problems in current code.
+
+#### `/doc` - Documentation Generation
+
+**Purpose**: Add comprehensive documentation to current code
 
 **Features**:
+- Language-specific docstring patterns following conventions
+- Inline comments for complex logic
+- Type hints where applicable
+- Usage examples when helpful
 
-- Language-specific documentation patterns
-- Docstring generation following conventions
-- Inline comment suggestions
-- Type hint recommendations
+**Documentation Focus**:
+- Clear and concise explanations
+- Focused on "why" not just "what"
+- Helpful for future maintainers
+- Context-aware based on current selection or cursor position
+
+**Best Used When**: Code lacks documentation or you want to improve maintainability.
 
 ### Prompt Implementation Details
 
@@ -1379,24 +1399,24 @@ The prompt system integrates with vim-q-connect's thread-safe architecture:
 
 ### Usage Patterns
 
-#### Basic Workflow
+#### Basic Code Review Workflow
 ```
 User: /review
 Q CLI: [Calls review() prompt]
 MCP Server: [Returns context-aware prompt]
 Q CLI: [Executes analysis using MCP tools]
-Result: Quickfix list populated with issues
+Result: Quickfix list populated with issues + inline annotations
 ```
 
-#### Advanced Workflow with Parameters
+#### Targeted Analysis with Parameters
 ```
-User: /review src/security.py
-Q CLI: [Calls review(target="src/security.py")]
-MCP Server: [Returns targeted prompt]
-Q CLI: [Focuses analysis on specific file]
+User: /review "performance issues"
+Q CLI: [Calls review(target="performance issues")]
+MCP Server: [Returns focused prompt]
+Q CLI: [Analyzes specifically for performance problems]
 ```
 
-#### Fix Workflow Integration
+#### Fix Current Issue Workflow
 ```
 User: /review                    # Populate quickfix
 Vim: :cnext                      # Navigate to issue
@@ -1404,6 +1424,24 @@ User: /fix                       # Fix current issue
 Q CLI: [Gets current quickfix entry via MCP]
 MCP Server: [Returns fix prompt with issue context]
 Q CLI: [Applies targeted fix]
+```
+
+#### Understanding Code Workflow
+```
+User: [Select complex function]
+User: /explain
+Q CLI: [Calls explain() prompt]
+MCP Server: [Returns context-aware explanation prompt]
+Q CLI: [Provides detailed code explanation]
+```
+
+#### Documentation Workflow
+```
+User: [Position cursor in undocumented function]
+User: /doc
+Q CLI: [Calls doc() prompt]
+MCP Server: [Returns documentation prompt]
+Q CLI: [Adds docstrings, comments, and type hints]
 ```
 
 ### Extension Points

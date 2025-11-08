@@ -507,8 +507,18 @@ function! s:DoAddVirtualTextBatch(entries)
       while idx < strchars(text)
         let char = strcharpart(text, idx, 1)
         let codepoint = char2nr(char)
-        " Check if in emoji ranges: U+1F300-U+1F9FF, U+2600-U+26FF, U+2700-U+27BF
-        if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || (codepoint >= 0x2600 && codepoint <= 0x27BF)
+        " Check if in emoji ranges: 
+        " U+1F300-U+1F9FF (Emoticons, Transport, etc.)
+        " U+2600-U+26FF (Miscellaneous Symbols)
+        " U+2700-U+27BF (Dingbats) 
+        " U+2300-U+23FF (Miscellaneous Technical - includes ⏱)
+        " U+2100-U+214F (Letterlike Symbols - includes ℹ)
+        " U+FE00-U+FE0F (Variation Selectors)
+        if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || 
+         \ (codepoint >= 0x2600 && codepoint <= 0x27BF) ||
+         \ (codepoint >= 0x2300 && codepoint <= 0x23FF) ||
+         \ (codepoint >= 0x2100 && codepoint <= 0x214F) ||
+         \ (codepoint >= 0xFE00 && codepoint <= 0xFE0F)
           let emoji .= char
           let idx += 1
         else

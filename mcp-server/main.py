@@ -102,10 +102,10 @@ The user will navigate through issues using :cnext/:cprev in Vim and can use the
 
 @mcp.prompt()
 def explain(target: str = None):
-    """Explain what the current code does
+    """Explain what the current code does by adding detailed annotations
     
-    Provides a clear explanation of the code at the current cursor position,
-    including its purpose, how it works, and any important details.
+    Provides comprehensive explanations as inline annotations using add_virtual_text,
+    with overview and detailed technical explanations for senior developers.
     """
     try:
         prompt = ""
@@ -119,7 +119,7 @@ def explain(target: str = None):
             if context.get('visual_start', 0) > 0:
                 prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n"
             
-        prompt += f"Please explain the code."
+        prompt += f"Please explain the code by adding detailed annotations directly to the editor."
         if target is not None:
             prompt += f" The user has specifically asked about: {target}"
         elif vim_state.is_connected():
@@ -127,13 +127,30 @@ def explain(target: str = None):
 
         prompt += """
 
-Provide:
-1. What the code does (high-level purpose)
-2. How it works (step-by-step explanation)
-3. Any important details or edge cases
-4. Potential issues or improvements
+Steps:
+1. Use get_editor_context to see the current code
+2. Use add_virtual_text to add comprehensive annotations explaining the code
 
-Use the get_editor_context tool to see what code I'm looking at."""
+Annotation Guidelines:
+- Start with an OVERVIEW annotation using ℹ️ emoji for cases where there is a
+  function/method/class etc, or a section being explained
+- Add detailed annotations using 💬 emoji for each significant line or block
+- Make annotations detailed and suitable for senior developers
+- Include technical context, design rationale, and implementation details
+- Use blocks of text to provide comprehensive explanations
+- Focus on "why" decisions were made, not just "what" the code does
+
+Example annotation structure:
+- ℹ️ OVERVIEW: High-level purpose and architectural context
+- 💬 TECHNICAL DETAIL: Specific implementation choices and trade-offs
+- 💬 DESIGN RATIONALE: Why this approach was chosen
+- 💬 EDGE CASES: Important considerations and potential issues
+
+Make the explanations comprehensive enough that a senior developer could understand:
+- The purpose and context of the code
+- Key design decisions and trade-offs
+- Implementation details and technical considerations
+- Potential issues, edge cases, or areas for improvement"""
 
         return prompt
         
@@ -261,7 +278,11 @@ Add:
 Make the documentation:
 - Clear and concise
 - Focused on "why" not just "what"
-- Helpful for future maintainers"""
+- Helpful for future maintainers
+
+Make sure to understand what the code does, and if other parts of the codebase
+will assist with that, read and understand them as well.
+"""
 
         return prompt
         
@@ -351,19 +372,22 @@ def handle_vim_message(message):
         data = json.loads(message)
         if data.get('method') == 'context_update':
             params = data['params']
+            # Build normalized context dict with safe defaults to prevent KeyError
+            # This ensures Q CLI always has complete editor state even if Vim sends partial data
             context = {
-                "context": params.get('context', 'No context available'),
-                "filename": params.get('filename', ''),
-                "line": params.get('line', 0),
-                "visual_start": params.get('visual_start', 0),
-                "visual_end": params.get('visual_end', 0),
-                "total_lines": params.get('total_lines', 0),
-                "modified": params.get('modified', False),
-                "encoding": params.get('encoding', ''),
-                "line_endings": params.get('line_endings', '')
+                "context": params.get('context', 'No context available'),  # File content or selected text
+                "filename": params.get('filename', ''),                    # Absolute path to current file
+                "line": params.get('line', 0),                             # Current cursor line (1-indexed)
+                "visual_start": params.get('visual_start', 0),             # Selection start line (0 = no selection)
+                "visual_end": params.get('visual_end', 0),                 # Selection end line (0 = no selection)
+                "total_lines": params.get('total_lines', 0),               # Total lines in file
+                "modified": params.get('modified', False),                 # True if file has unsaved changes
+                "encoding": params.get('encoding', ''),                    # File encoding (utf-8, latin1, etc.)
+                "line_endings": params.get('line_endings', '')             # unix, dos, or mac line endings
             }
+            # Thread-safe update of global state for Q CLI tools to access
             vim_state.update_context(context)
-            vim_state.set_connected(True)
+            vim_state.set_connected(True)  # Mark connection as active for health checks
             logger.info(f"Context updated: {params.get('filename', '')}:{params.get('line', 0)}")
         elif data.get('method') == 'disconnect':
             vim_state.set_connected(False)

@@ -234,26 +234,36 @@ This disconnects from the MCP server and stops sending context updates.
 
 vim-q-connect provides pre-built prompts that you can use with Q CLI. Access them by typing `/` in Q CLI:
 
-| Prompt | Description |
-|--------|-------------|
-| `review_code` | Review current code for security, quality, and best practices |
-| `explain_code` | Explain what the current code does and how it works |
-| `find_issues` | Scan codebase and populate quickfix list with all issues |
-| `fix_current_issue` | Fix the issue you're currently viewing in the quickfix list |
-| `add_documentation` | Add docstrings and comments to current code |
-| `optimize_performance` | Analyze and optimize performance of current code |
+| Prompt | Description | Best Used When |
+|--------|-------------|----------------|
+| `/review` | Comprehensive code review for security, quality, performance, and best practices. Populates quickfix list with issues and adds inline annotations. | You want a thorough analysis of your code with actionable findings |
+| `/explain` | Detailed explanation of what the current code does, how it works, and important details. | You're reading unfamiliar code or need to understand complex logic |
+| `/fix` | Intelligently fixes code issues. Auto-detects current quickfix issue or analyzes current code context. | You have a specific issue to resolve or want to fix problems in your current code |
+| `/doc` | Adds comprehensive documentation including docstrings, inline comments, and type hints. | Your code lacks documentation or you want to improve maintainability |
 
-**Example usage**:
+**Key Features**:
+- **Context-aware**: All prompts automatically know your current file, cursor position, and selected text
+- **Quickfix integration**: `/review` populates Vim's quickfix list for easy navigation
+- **Smart targeting**: Use optional parameters (e.g., `/fix "performance issues"`) for specific focus
+- **Inline annotations**: Visual feedback appears directly in your editor
+
+**Example workflows**:
 ```
-You: /review_code
-Q: [Analyzes code and adds inline annotations for issues found]
+# Comprehensive code review
+You: /review
+Q: [Analyzes code, adds quickfix entries and inline annotations]
+You: :cnext  [Navigate to first issue]
+You: /fix    [Fix the current quickfix issue]
 
-You: /find_issues
-Q: [Scans codebase and populates quickfix list]
+# Understanding unfamiliar code
+You: [Select a complex function]
+You: /explain
+Q: [Explains the selected function in detail]
 
-You: [Navigate to first issue with :cnext]
-You: /fix_current_issue
-Q: [Reads quickfix entry and applies the fix]
+# Adding documentation
+You: [Position cursor in undocumented function]
+You: /doc
+Q: [Adds docstrings, comments, and type hints]
 ```
 
 ## How to Use with Q CLI

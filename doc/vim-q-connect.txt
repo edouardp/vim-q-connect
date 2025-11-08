@@ -127,21 +127,78 @@ MCP PROMPTS					*vim-q-connect-prompts*
 
 The MCP server provides pre-built prompts accessible via `/` in Q CLI:
 
-/review						*review-prompt*
-		Review code for security, quality, and performance issues.
-		Populates quickfix list with findings and detailed descriptions.
+/review [target]				*review-prompt*
+		Comprehensive code review for security, quality, performance, and
+		best practices. Populates quickfix list with issues and adds
+		inline annotations. Optional target parameter for specific focus.
+		
+		Best used when: You want thorough analysis with actionable findings
+		
+		Features:
+		- Checks security vulnerabilities, code quality, performance
+		- Creates quickfix entries with emoji indicators
+		- Multi-line descriptions with problem + solution
+		- Navigate with :cnext/:cprev, fix with /fix
 
-/explain					*explain-prompt*
-		Explain what the current code does, how it works, and any
-		important details or potential improvements.
+/explain [target]				*explain-prompt*
+		Detailed explanation of what the current code does, how it works,
+		and important details. Optional target parameter for specific focus.
+		
+		Best used when: Reading unfamiliar code or understanding complex logic
+		
+		Provides:
+		- High-level purpose and step-by-step explanation
+		- Important details and edge cases
+		- Potential issues or improvements
 
-/fix						*fix-prompt*
-		Fix issues in code or the current quickfix issue. Automatically
-		detects if user is focused on a quickfix entry.
+/fix [target]					*fix-prompt*
+		Intelligently fixes code issues. Auto-detects current quickfix
+		issue or analyzes current code context. Optional target parameter
+		for specific types of fixes.
+		
+		Best used when: You have specific issues to resolve
+		
+		Smart behavior:
+		- Detects current quickfix entry and fixes that specific issue
+		- Falls back to analyzing current editor context
+		- Provides minimal, focused fixes with explanations
+		- Follows best practices and coding standards
 
-/add_documentation				*add_documentation-prompt*
-		Add appropriate documentation (docstrings, comments) to current
-		code following language conventions.
+/doc [target]					*doc-prompt*
+		Adds comprehensive documentation including docstrings, inline
+		comments, and type hints. Optional target parameter for specific
+		documentation focus.
+		
+		Best used when: Code lacks documentation or needs maintainability
+		
+		Adds:
+		- Function/class docstrings following language conventions
+		- Inline comments for complex logic
+		- Type hints where applicable
+		- Usage examples when helpful
+
+Example Workflows:
+>
+	" Comprehensive code review
+	You: /review
+	Q: [Analyzes code, adds quickfix entries and inline annotations]
+	You: :cnext  [Navigate to first issue]
+	You: /fix    [Fix the current quickfix issue]
+
+	" Understanding unfamiliar code
+	You: [Select a complex function]
+	You: /explain
+	Q: [Explains the selected function in detail]
+
+	" Adding documentation
+	You: [Position cursor in undocumented function]
+	You: /doc
+	Q: [Adds docstrings, comments, and type hints]
+
+	" Targeted fixes
+	You: /fix "performance issues"
+	Q: [Focuses specifically on performance problems]
+<
 
 TECHNICAL DETAILS				*vim-q-connect-technical*
 
