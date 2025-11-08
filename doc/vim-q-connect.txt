@@ -1,48 +1,223 @@
 *vim-q-connect.txt*	Vim plugin for Q CLI context via Model Context Protocol
 
-Author: Your Name
-License: Same terms as Vim itself (see |license|)
+Author: Edouard Poor
+License: MIT License
 
 INTRODUCTION					*vim-q-connect*
 
-This plugin provides editor context to Q CLI via Model Context Protocol
-(MCP). It tracks your cursor position and current line, sending context
-updates via Unix socket to Q CLI's MCP server.
+vim-q-connect bridges Vim and Amazon Q CLI using Model Context Protocol (MCP)
+for real-time AI-powered coding assistance. It provides bidirectional
+communication enabling context sharing, inline annotations, navigation, and
+intelligent code analysis directly in your editor.
+
+Key Features:
+- Real-time editor context sharing with Q CLI
+- Inline virtual text annotations for code reviews and analysis
+- Quickfix list integration for issue navigation
+- Automatic file change detection and annotation updates
+- Thread-safe bidirectional communication via Unix domain sockets
 
 COMMANDS					*vim-q-connect-commands*
 
 :QConnect					*:QConnect*
 		Start tracking editor context and connect to Q CLI's MCP server.
+		Enables autoread and sets up autocmds for context updates.
 
 :QConnect!					*:QConnect!*
 		Stop tracking editor context and disconnect from MCP server.
+		Restores original autoread settings and removes autocmds.
+
+:QVirtualTextClear				*:QVirtualTextClear*
+		Clear all Q Connect virtual text annotations from current buffer.
+		Removes all text properties of type 'q_virtual_text'.
+
+:QQuickfixAnnotate				*:QQuickfixAnnotate*
+		Manually annotate quickfix entries as virtual text.
+		Usually called automatically when navigating quickfix entries.
 
 CONFIGURATION					*vim-q-connect-configuration*
 
 g:vim_q_connect_socket_path			*g:vim_q_connect_socket_path*
 		Custom socket path for MCP communication.
-		Default: plugin directory + '/.vim-q-mcp.sock'
+		Default: getcwd() + '/.vim-q-mcp.sock'
 >
-		let g:vim_q_connect_socket_path = '/path/to/custom.sock'
+		let g:vim_q_connect_socket_path = '/tmp/.vim-q-mcp.sock'
+<
+
+HIGHLIGHT GROUPS				*vim-q-connect-highlights*
+
+qtext						*hl-qtext*
+		Highlight group for virtual text annotations.
+		Default: ctermbg=237 ctermfg=250 cterm=italic
+		         guibg=#2a2a2a guifg=#d0d0d0 gui=italic
+>
+		highlight qtext ctermbg=235 ctermfg=248 cterm=italic
 <
 
 USAGE						*vim-q-connect-usage*
 
-The plugin connects to Q CLI's MCP server on demand. Use :QConnect to start
-tracking editor context.
+Basic Connection:
+1. Start Q CLI: `q chat`
+2. In Vim: `:QConnect`
+3. Q CLI now has real-time access to your editor context
 
-To control the connection:
+The plugin automatically tracks:
+- Current filename and cursor position
+- Visual selections (start/end lines)
+- File modification status
+- Buffer type and encoding information
+- Text changes and cursor movements
+
+Context Updates:
+Context is sent to Q CLI on these events:
+- CursorMoved, CursorMovedI (cursor movement)
+- ModeChanged (entering/leaving visual mode)
+- TextChanged, TextChangedI (text modifications)
+
+Virtual Text Annotations:
+Q CLI can add inline annotations above code lines using the
+`add_virtual_text` MCP tool. Annotations support:
+- Multi-line text with proper indentation
+- Emoji indicators for visual categorization
+- Automatic line-width padding for full background
+- Persistence across buffer switches
+
+Quickfix Integration:
+Q CLI can populate Vim's quickfix list using `add_to_quickfix` MCP tool:
+- Entries are sorted by filename then line number
+- Annotations appear automatically when navigating entries
+- Line numbers update automatically when files change
+- Use :cnext/:cprev to navigate between issues
+
+File Change Detection:
+The plugin enables autoread and automatically:
+- Detects external file changes (git checkout, build tools, etc.)
+- Reloads files and re-applies annotations at correct line numbers
+- Updates quickfix entries to match new line numbers
+
+MCP TOOLS					*vim-q-connect-mcp-tools*
+
+The MCP server provides these tools to Q CLI:
+
+get_editor_context()				*get_editor_context*
+		Returns current editor state including filename, cursor position,
+		visual selection, file metadata, and formatted code context.
+
+goto_line(line_number, filename="")		*goto_line*
+		Navigate to specific line/file in Vim. Handles window switching,
+		tab navigation, and buffer management.
+
+add_virtual_text(entries)			*add_virtual_text*
+		Add inline annotations above code lines. Supports multi-line
+		text, emoji indicators, and line-based positioning.
+
+add_to_quickfix(entries)			*add_to_quickfix*
+		Add entries to Vim's quickfix list. Supports line-based
+		positioning and automatic sorting.
+
+get_current_quickfix_entry()			*get_current_quickfix_entry*
+		Get the quickfix entry currently focused by the user.
+		Used for "fix this issue" workflows.
+
+get_annotations_above_current_position()	*get_annotations_above_current_position*
+		Get virtual text annotations above current cursor position.
+		Returns closest annotations within 20 lines.
+
+MCP PROMPTS					*vim-q-connect-prompts*
+
+The MCP server provides pre-built prompts accessible via `/` in Q CLI:
+
+/review						*review-prompt*
+		Review code for security, quality, and performance issues.
+		Populates quickfix list with findings and detailed descriptions.
+
+/explain					*explain-prompt*
+		Explain what the current code does, how it works, and any
+		important details or potential improvements.
+
+/fix						*fix-prompt*
+		Fix issues in code or the current quickfix issue. Automatically
+		detects if user is focused on a quickfix entry.
+
+/add_documentation				*add_documentation-prompt*
+		Add appropriate documentation (docstrings, comments) to current
+		code following language conventions.
+
+TECHNICAL DETAILS				*vim-q-connect-technical*
+
+Communication Protocol:
+- Unix domain socket with JSON-RPC message format
+- Newline-delimited messages for streaming
+- Thread-safe request/response queues
+- Automatic reconnection handling
+
+Text Properties:
+- Uses Vim's textprop system (requires Vim 8.1+)
+- Property type 'q_virtual_text' with 'qtext' highlight
+- Virtual text positioned 'above' target lines
+- Automatic cleanup and duplicate prevention
+
+State Management:
+- Thread-safe VimState class with mutex protection
+- Separate threads for socket server and message handling
+- Request queues for bidirectional communication
+- Response correlation using unique request IDs
+
+Buffer Handling:
+- Skips special buffers (terminal, NERDTree, etc.)
+- Handles visual selections with proper start/end ordering
+- Supports cross-file navigation and buffer switching
+- Automatic buffer loading for quickfix line resolution
+
+TROUBLESHOOTING					*vim-q-connect-troubleshooting*
+
+Connection Issues:
+- Ensure Q CLI is running: `q chat`
+- Check socket exists: `ls -la /tmp/.vim-q-mcp.sock`
+- Verify text properties: `:echo has('textprop')` should return 1
+- Check channel status: `:echo ch_status(g:mcp_channel)`
+
+Annotations Not Appearing:
+- Verify Vim version 8.1+ with textprop support
+- Check for conflicting plugins
+- Manually refresh: `:QQuickfixAnnotate`
+- Clear and reconnect: `:QConnect! | :QConnect`
+
+Performance:
+- Large files may cause slower context updates
+- Virtual text rendering scales with window width
+- Socket communication is optimized for low latency
+
+EXAMPLES					*vim-q-connect-examples*
+
+Basic Code Review Workflow:
 >
-	:QConnect		" Start tracking
-	:QConnect!		" Stop tracking
+	" In Q CLI
+	You: /review
+	Q: [Analyzes code, adds quickfix entries and annotations]
+	
+	" In Vim
+	:cnext		" Navigate to first issue
+	:cnext		" Navigate to next issue
+	
+	" In Q CLI  
+	You: /fix
+	Q: [Fixes the current quickfix issue]
 <
 
-INTEGRATION					*vim-q-connect-integration*
+Custom Socket Path:
+>
+	" In .vimrc
+	let g:vim_q_connect_socket_path = '/tmp/my-vim-q.sock'
+	
+	" In Q CLI MCP config
+	"env": {"SOCKET_DIR": "/tmp"}
+<
 
-Q CLI manages the MCP server lifecycle. The plugin only connects to an
-existing server when you run :QConnect.
-
-The MCP server provides `get_editor_context` and `goto_line` tools to
-Q CLI for editor integration.
+Manual Annotation Management:
+>
+	:QVirtualTextClear		" Clear all annotations
+	:QQuickfixAnnotate		" Re-annotate quickfix entries
+<
 
 vim:tw=78:ts=8:ft=help:norl:
