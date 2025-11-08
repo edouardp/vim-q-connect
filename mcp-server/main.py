@@ -44,20 +44,27 @@ mcp = FastMCP("vim-context")
 def review(target: str = None):
     """Review the code for quality, security, and best practices"""
     
-    target_str = "the entire codebase (current repository or folder)"
-    multifiles = True
     
-    if target is None and vim_state.is_connected():
+    prompt = ""
+    
+    if vim_state.is_connected():
         context = vim_state.get_context()
-        target_str = context["filename"]
-        multifiles = False
+        prompt += f"Current context:\n"
+        prompt += f"File: {context['filename']}\n"
+        prompt += f"Line: {context['current_line']}\n"
+        
+        if context.get('visual_selection') and context['visual_selection']['start_line'] != context['visual_selection']['end_line']:
+            prompt += f"Selection: lines {context['visual_selection']['start_line']}-{context['visual_selection']['end_line']}\n"
+        
+        prompt += f"Line Content: {context['content']}\n\n"
+        
+    prompt += f"Please review the code for issues."
+    if target is None:
+        prompt += f"The user has specifically asked for this to be reviewed: {target}"
+    elif vim_state.is_connected():
+        prompt += "Use the context above to determine what should be reviewed. If they have a current selection, that is the most important thing."
 
-    prompt = f"Please review {target_str} for issues."
-
-    if multifiles:
-        prompt += f"\n\nFor each code file in {target_str}:"
-    else:
-        prompt += f"\n\nFor the file {target_str}:"
+    prompt += f"\n\nFor the code they have asked for a review for:":
         
     prompt += """
 1. Check for security vulnerabilities
@@ -78,7 +85,7 @@ Examples of good quickfix entries:
 - "🚀 PERFORMANCE: Database query in loop\nExecuting queries in loops causes N+1 performance issues\nMove query outside loop or use batch operations"
 - "🧹 QUALITY: Missing error handling\nUnhandled exceptions can crash the application\nAdd try-catch blocks with appropriate error responses"
 
-The user will navigate through issues using :cnext/:cprev in Vim and can use the fix_current_issue prompt to fix individual issues."""
+The user will navigate through issues using :cnext/:cprev in Vim and can use the @fix prompt to fix individual issues."""
 
     return prompt
 
