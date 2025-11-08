@@ -671,12 +671,24 @@ function! s:FindAllLinesByTextInFile(line_text, filename)
   " Search through buffer lines
   let lines = getbufline(bufnr, 1, '$')
   let matches = []
+  
+  " First pass: exact matches (including whitespace)
   for i in range(len(lines))
     let line = lines[i]
-    if line ==# a:line_text || trim(line) ==# trim(a:line_text)
+    if line ==# a:line_text
       call add(matches, i + 1)  " Line numbers are 1-indexed
     endif
   endfor
+  
+  " Second pass: trimmed matches (only if no exact matches found)
+  if empty(matches)
+    for i in range(len(lines))
+      let line = lines[i]
+      if trim(line) ==# trim(a:line_text)
+        call add(matches, i + 1)  " Line numbers are 1-indexed
+      endif
+    endfor
+  endif
   
   return matches
 endfunction
@@ -801,12 +813,25 @@ endfunction
 function! s:FindAllLinesByText(line_text)
   let total_lines = line('$')
   let matches = []
+  
+  " First pass: exact matches (including whitespace)
   for i in range(1, total_lines)
     let line = getline(i)
-    if line ==# a:line_text || trim(line) ==# trim(a:line_text)
+    if line ==# a:line_text
       call add(matches, i)
     endif
   endfor
+  
+  " Second pass: trimmed matches (only if no exact matches found)
+  if empty(matches)
+    for i in range(1, total_lines)
+      let line = getline(i)
+      if trim(line) ==# trim(a:line_text)
+        call add(matches, i)
+      endif
+    endfor
+  endif
+  
   return matches
 endfunction
 
