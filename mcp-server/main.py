@@ -101,13 +101,31 @@ The user will navigate through issues using :cnext/:cprev in Vim and can use the
 
 
 @mcp.prompt()
-def explain():
+def explain(target: str = None):
     """Explain what the current code does
     
     Provides a clear explanation of the code at the current cursor position,
     including its purpose, how it works, and any important details.
     """
-    return """Please explain the code I'm currently looking at in my editor.
+    try:
+        prompt = ""
+        
+        if vim_state.is_connected():
+            context = vim_state.get_context()
+            prompt += f"Current context:\n"
+            prompt += f"File: {context['filename']}\n"
+            prompt += f"Line: {context['line']}\n"
+            
+            if context.get('visual_start', 0) > 0:
+                prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n"
+            
+        prompt += f"Please explain the code."
+        if target is not None:
+            prompt += f" The user has specifically asked about: {target}"
+        elif vim_state.is_connected():
+            prompt += " Use the context above to determine what should be explained. If they have a current selection, that is the most important thing."
+
+        prompt += """
 
 Provide:
 1. What the code does (high-level purpose)
@@ -116,6 +134,19 @@ Provide:
 4. Potential issues or improvements
 
 Use the get_editor_context tool to see what code I'm looking at."""
+
+        return prompt
+        
+    except Exception as e:
+        import traceback
+        error_details = f"ERROR in explain prompt:\n"
+        error_details += f"Exception type: {type(e).__name__}\n"
+        error_details += f"Exception message: {str(e)}\n"
+        error_details += f"Traceback:\n{traceback.format_exc()}\n"
+        error_details += f"Function arguments: target={target}\n"
+        if 'vim_state' in globals():
+            error_details += f"Vim connected: {vim_state.is_connected()}\n"
+        return error_details
 
 
 @mcp.prompt()
@@ -196,15 +227,30 @@ Make sure each fix:
 - Is minimal and focused"""
 
 @mcp.prompt()
-def doc():
+def doc(target: str = None):
     """Add documentation to the current code
     
     Adds appropriate documentation (docstrings, comments) to the code
-    at the current cursor position.
     """
-    return """Please add documentation to the code I'm currently looking at.
+    try:
+        prompt = ""
+        
+        if vim_state.is_connected():
+            context = vim_state.get_context()
+            prompt += f"Current context:\n"
+            prompt += f"File: {context['filename']}\n"
+            prompt += f"Line: {context['line']}\n"
+            
+            if context.get('visual_start', 0) > 0:
+                prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n"
+            
+        prompt += f"Please add documentation to the code."
+        if target is not None:
+            prompt += f" The user has specifically asked to document: {target}"
+        elif vim_state.is_connected():
+            prompt += " Use the context above to determine what should be documented. If there is a current selection, that is the most important thing."
 
-Use the get_editor_context tool to see what code needs documentation.
+        prompt += """
 
 Add:
 1. Docstrings for functions/classes (following language conventions)
@@ -216,6 +262,19 @@ Make the documentation:
 - Clear and concise
 - Focused on "why" not just "what"
 - Helpful for future maintainers"""
+
+        return prompt
+        
+    except Exception as e:
+        import traceback
+        error_details = f"ERROR in doc prompt:\n"
+        error_details += f"Exception type: {type(e).__name__}\n"
+        error_details += f"Exception message: {str(e)}\n"
+        error_details += f"Traceback:\n{traceback.format_exc()}\n"
+        error_details += f"Function arguments: target={target}\n"
+        if 'vim_state' in globals():
+            error_details += f"Vim connected: {vim_state.is_connected()}\n"
+        return error_details
 
 
 
