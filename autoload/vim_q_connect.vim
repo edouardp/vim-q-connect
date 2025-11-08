@@ -143,8 +143,10 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
   " Check for existing props with same text to avoid duplicates
   let existing_props = prop_list(a:line_num, {'type': l:prop_type})
   
+  " Check if any existing prop contains the first line of our text
+  let first_line = split(a:text, '\n', 1)[0]
   for prop in existing_props
-    if has_key(prop, 'text') && stridx(prop.text, a:text) >= 0
+    if has_key(prop, 'text') && stridx(prop.text, first_line) >= 0
       return
     endif
   endfor
@@ -403,6 +405,7 @@ function! vim_q_connect#start_tracking()
     augroup AutoRead
       autocmd!
       autocmd FocusGained,BufEnter,CursorHold,CursorHoldI * checktime
+      autocmd FileChangedShellPost * call s:AnnotateCurrentBuffer()
     augroup END
   endif
   
@@ -572,94 +575,66 @@ endfunction
 
 " Add multiple entries to quickfix list
 function! s:DoAddToQuickfix(entries)
-  let qf_list = []
+  let resolved_entries = []
   let current_file = expand('%:p')
   let skipped = 0
   
-  " First pass: resolve line numbers and build entries
-  let resolved_entries = []
+  " Pass 1: Resolve line numbers
   for entry in a:entries
     " Validate required fields
-    if !has_key(entry, 'text') || !has_key(entry, 'line')
+    if !has_key(entry, 'text') || (!has_key(entry, 'line') && !has_key(entry, 'line_number'))
       let skipped += 1
       continue
     endif
     
-    " Get filename first - use provided or current file, expand to full path
+    " Get filename - use provided or current file, expand to full path
     if has_key(entry, 'filename')
       let filename = fnamemodify(entry.filename, ':p')
     else
       let filename = current_file
     endif
     
-    " Find line by text content
-    let line_matches = s:FindAllLinesByTextInFile(entry.line, filename)
-    let line_num = 0
+    " Get entry type - E (error), W (warning), I (info), N (note)
+    let entry_type = get(entry, 'type', 'I')
     
-    if len(line_matches) == 1
-      " Single match - use it
-      let line_num = line_matches[0]
-    elseif len(line_matches) > 1
-      " Multiple matches - use line_number_hint if provided
-      if has_key(entry, 'line_number_hint')
-        let hint = entry.line_number_hint
-        " Find closest match to hint
-        let closest_match = line_matches[0]
-        let min_distance = abs(closest_match - hint)
-        for match in line_matches[1:]
-          let distance = abs(match - hint)
-          if distance < min_distance
-            let min_distance = distance
-            let closest_match = match
-          endif
-        endfor
-        let line_num = closest_match
-      else
-        " No hint - use first match
-        let line_num = line_matches[0]
-      endif
-    else
-      " No matches - use line_number_hint if provided
-      if has_key(entry, 'line_number_hint')
-        let line_num = entry.line_number_hint
+    " Resolve line number manually
+    if has_key(entry, 'line')
+        let line_num = s:FindLineByTextInFile(entry.line, filename)
+      if line_num > 0
+        let user_data = {'line_text': entry.line}
       else
         let skipped += 1
         continue
       endif
+    else
+      let line_num = entry.line_number
+      let user_data = {}
     endif
     
-    " Get entry type - E (error), W (warning), I (info), N (note)
-    let entry_type = get(entry, 'type', 'I')
+    " Add emoji to user_data if provided
+    if has_key(entry, 'emoji')
+      let user_data.emoji = entry.emoji
+    endif
     
-    " Add to resolved entries with sort key
+    " Store resolved entry
     call add(resolved_entries, {
       \ 'filename': filename,
       \ 'lnum': line_num,
       \ 'text': entry.text,
       \ 'type': entry_type,
-      \ 'emoji': get(entry, 'emoji', ''),
-      \ 'sort_key': filename . ':' . printf('%08d', line_num)
+      \ 'user_data': user_data
     \ })
   endfor
   
-  " Second pass: sort by filename then line number
-  call sort(resolved_entries, {a, b -> a.sort_key ==# b.sort_key ? 0 : a.sort_key > b.sort_key ? 1 : -1})
+  " Pass 2: Sort by filename then line number
+  call sort(resolved_entries, {a, b -> 
+    \ a.filename ==# b.filename ? (a.lnum - b.lnum) : (a.filename > b.filename ? 1 : -1)
+  \ })
   
-  " Third pass: build final quickfix list
+  " Pass 3: Build quickfix list
+  let qf_list = []
   for entry in resolved_entries
-    let qf_entry = {
-      \ 'filename': entry.filename,
-      \ 'lnum': entry.lnum,
-      \ 'text': entry.text,
-      \ 'type': entry.type
-    \ }
-    
-    " Add emoji to user_data if provided
-    if has_key(entry, 'emoji')
-      let qf_entry.user_data = {'emoji': entry.emoji}
-    endif
-    
-    call add(qf_list, qf_entry)
+    call add(qf_list, entry)
   endfor
   
   " Add to quickfix list
@@ -669,8 +644,6 @@ function! s:DoAddToQuickfix(entries)
     if empty(filter(getwininfo(), 'v:val.quickfix'))
       copen
     endif
-    " Auto-annotate current buffer after adding entries
-    call vim_q_connect#quickfix_annotate()
     " Set up autocmd for future annotations now that quickfix exists
     call s:SetupQuickfixAutocmd()
   elseif skipped > 0
@@ -716,11 +689,79 @@ function! s:SetupQuickfixAutocmd()
   augroup END
 endfunction
 
+" Find line number by searching for text in a specific file
+function! s:FindLineByTextInFile(line_text, filename)
+  " Read file directly instead of using buffers
+  if !filereadable(a:filename)
+    echom "File not readable: " . a:filename
+    return 0
+  endif
+  
+  let lines = readfile(a:filename)
+  
+  for i in range(len(lines))
+    " Try exact match first
+    if lines[i] ==# a:line_text
+      return i + 1
+    endif
+    " Try trimmed match
+    if trim(lines[i]) ==# trim(a:line_text)
+      return i + 1
+    endif
+    " Try substring match for partial lines
+    if stridx(lines[i], a:line_text) >= 0
+      return i + 1
+    endif
+  endfor
+  
+  return 0
+endfunction
+
+" Refresh quickfix line numbers for current file before annotation
+function! s:RefreshQuickfixPatterns()
+  let qf_list = getqflist({'all': 1})
+  let items = qf_list.items
+  let current_file = expand('%:p')
+  let updated = 0
+  
+  for i in range(len(items))
+    let entry = items[i]
+    let entry_file = bufname(entry.bufnr)
+    let entry_file_full = fnamemodify(entry_file, ':p')
+    
+    " Only update entries for current file that have line_text in user_data
+    if entry_file_full ==# current_file && 
+     \ has_key(entry, 'user_data') && 
+     \ type(entry.user_data) == v:t_dict && 
+     \ has_key(entry.user_data, 'line_text')
+      
+      " Find current line number for the text
+      let line_num = s:FindLineByTextInFile(entry.user_data.line_text, current_file)
+      
+      if line_num > 0 && line_num != entry.lnum
+        let items[i].lnum = line_num
+        " Remove pattern if it exists
+        if has_key(items[i], 'pattern')
+          unlet items[i].pattern
+        endif
+        let updated += 1
+      endif
+    endif
+  endfor
+  
+  if updated > 0
+    call setqflist([], 'r', {'items': items})
+  endif
+endfunction
+
 " Annotate quickfix entries for current buffer only
 function! s:AnnotateCurrentBuffer()
   if empty(getqflist()) || &buftype != ''
     return
   endif
+  
+  " Refresh patterns before annotating
+  call s:RefreshQuickfixPatterns()
   
   let current_buf = bufnr('%')
   let qf_list = getqflist()
