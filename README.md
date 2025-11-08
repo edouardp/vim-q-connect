@@ -136,8 +136,13 @@ Create or edit `~/.aws/amazonq/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "vim-context": {
-      "command": "/path/to/vim-q-connect/mcp-server/run-mcp.sh"
+    "vim-q-connect": {
+      "command": "~/.vim/plugged/vim-q-connect/mcp-server/run-mcp.sh",
+      "args": [],
+      "env": {},
+      "disabled": false,
+      "autoApprove": [],
+      "capabilities": ["prompts"]
     }
   }
 }
@@ -145,16 +150,24 @@ Create or edit `~/.aws/amazonq/mcp.json`:
 
 #### Option B: Using CLI Agents Directory
 
-Create `~/.aws/amazonq/cli-agents/vim-context.json`:
+Create `~/.aws/amazonq/cli-agents/vim-q-connect.json`:
 
 ```json
 {
-  "name": "vim-context",
-  "command": "/path/to/vim-q-connect/mcp-server/run-mcp.sh"
+  "name": "vim-q-connect",
+  "command": "~/.vim/plugged/vim-q-connect/mcp-server/run-mcp.sh",
+  "args": [],
+  "env": {},
+  "disabled": false,
+  "autoApprove": [],
+  "capabilities": ["prompts"]
 }
 ```
 
-**Important**: Replace `/path/to/vim-q-connect` with the actual path where you installed the plugin.
+**Note**: Adjust the path based on your plugin manager:
+- **vim-plug**: `~/.vim/plugged/vim-q-connect/mcp-server/run-mcp.sh`
+- **Vundle**: `~/.vim/bundle/vim-q-connect/mcp-server/run-mcp.sh`
+- **Manual**: `~/.vim/pack/plugins/start/vim-q-connect/mcp-server/run-mcp.sh`
 
 ## Configuration
 
