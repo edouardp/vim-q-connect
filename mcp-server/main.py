@@ -64,7 +64,7 @@ def review(target: str = None):
     elif vim_state.is_connected():
         prompt += "Use the context above to determine what should be reviewed. If they have a current selection, that is the most important thing."
 
-    prompt += f"\n\nFor the code they have asked for a review for:":
+    prompt += f"\n\nFor the code they have asked for a review for:"
         
     prompt += """
 1. Check for security vulnerabilities
