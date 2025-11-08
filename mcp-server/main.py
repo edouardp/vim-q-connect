@@ -56,8 +56,6 @@ def review(target: str = None):
             if context.get('visual_start', 0) > 0:
                 prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n"
             
-            prompt += f"Line Content: {context['content']}\n\n"
-            
         prompt += f"Please review the code for issues."
         if target is not None:
             prompt += f"The user has specifically asked for this to be reviewed: {target}"
