@@ -128,7 +128,8 @@ def explain(target: str = None):
         prompt += """
 
 Steps:
-1. Use add_virtual_text to add comprehensive annotations explaining the code
+1. Analyse the code. If understanding it properly requires examining other code, then find and understand that code too.
+2. Use add_virtual_text to add comprehensive annotations explaining the code
 
 Annotation Guidelines:
 - Start with an OVERVIEW annotation using ℹ️ emoji for cases where there is a
