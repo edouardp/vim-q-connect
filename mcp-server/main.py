@@ -137,8 +137,10 @@ Annotation Guidelines:
 - Add detailed annotations using 💬 emoji for each significant line or block
 - Make annotations detailed and suitable for senior developers
 - Include technical context, design rationale, and implementation details
-- Use blocks of text to provide comprehensive explanations if required
+- Use blocks of text to provide comprehensive explanations if required,
+  but a single line if that is all that is required
 - Focus on "why" decisions were made, not just "what" the code does
+- Always include the verbatum line as the "line" parameter
 - Always include filename and line_number_hint parameters for better annotation placement
 
 Example annotation structure:
