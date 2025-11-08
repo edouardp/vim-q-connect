@@ -1253,16 +1253,18 @@ def review(target: str = None):
 
 ### Available Prompts
 
-#### `/review` - Code Analysis Workflow
+#### `@review` - Code Analysis Workflow
 
 **Purpose**: Comprehensive code review for security, quality, and performance
 
 **Context Detection**:
+
 - If `target` parameter provided: Reviews specified target
 - If no target + Vim connected: Reviews current file
 - Otherwise: Reviews entire codebase
 
 **Tool Usage Pattern**:
+
 ```
 1. Analyze code files
 2. Use add_to_quickfix() for each issue found
@@ -1273,31 +1275,35 @@ def review(target: str = None):
 ```
 
 **Example Output Structure**:
+
 ```
 🔒 SECURITY: Hardcoded password detected
 Passwords in source code can be exposed in version control
 Move to environment variables or secure configuration
 ```
 
-#### `/explain` - Code Documentation
+#### `@explain` - Code Documentation
 
 **Purpose**: Explain current code functionality and implementation
 
 **Context Usage**:
+
 - Always uses `get_editor_context()` to see current cursor position
 - Provides step-by-step explanation of code logic
 - Identifies potential issues or improvements
 
-#### `/fix` - Intelligent Issue Resolution
+#### `@fix` - Intelligent Issue Resolution
 
 **Purpose**: Fix code issues with context-aware detection
 
 **Smart Context Detection**:
+
 1. **Quickfix Priority**: Checks for current quickfix entry first
 2. **Editor Fallback**: Uses current cursor position if no quickfix
 3. **Parameter Override**: Uses provided target if specified
 
 **Quickfix Integration Flow**:
+
 ```python
 # Create unique request ID for response correlation
 request_id = str(uuid.uuid4())
@@ -1315,11 +1321,12 @@ vim_state.request_queue.put(('get_current_quickfix', {
 response_type, data = response_queue.get(timeout=2.0)
 ```
 
-#### `/add_documentation` - Documentation Generation
+#### `@add_documentation` - Documentation Generation
 
 **Purpose**: Add appropriate documentation to current code
 
 **Features**:
+
 - Language-specific documentation patterns
 - Docstring generation following conventions
 - Inline comment suggestions
@@ -1330,6 +1337,7 @@ response_type, data = response_queue.get(timeout=2.0)
 #### Dynamic Prompt Generation
 
 Prompts are functions that return strings, allowing for:
+
 - Runtime context evaluation
 - Conditional prompt content
 - Parameter-based customization
