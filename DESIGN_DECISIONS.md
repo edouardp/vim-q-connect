@@ -7,6 +7,7 @@
 4. [Vim Plugin Implementation](#vim-plugin-implementation)
 5. [Annotation System](#annotation-system)
 6. [Quickfix Integration](#quickfix-integration)
+7. [Built-in Prompts System](#built-in-prompts-system)
 
 ---
 
@@ -1226,6 +1227,185 @@ cd mcp-server && python main.py
 # Terminal 2: Monitor socket
 socat -v UNIX-CONNECT:.vim-q-mcp.sock -
 ```
+
+---
+
+## Built-in Prompts System
+
+The MCP server includes a built-in prompts system using FastMCP's `@mcp.prompt()` decorator. These prompts provide pre-configured workflows that users can access via Q CLI using the `/` prefix.
+
+### Prompt Architecture
+
+```python
+@mcp.prompt()
+def review(target: str = None):
+    """Review the code for quality, security, and best practices"""
+    # Dynamic prompt generation based on context
+    return prompt_string
+```
+
+**Key Design Principles:**
+
+1. **Context-Aware**: Prompts automatically detect current editor context
+2. **Tool Integration**: Prompts guide Q CLI to use appropriate MCP tools
+3. **Workflow-Oriented**: Each prompt represents a complete user workflow
+4. **Parameterized**: Optional parameters for customization
+
+### Available Prompts
+
+#### `/review` - Code Analysis Workflow
+
+**Purpose**: Comprehensive code review for security, quality, and performance
+
+**Context Detection**:
+- If `target` parameter provided: Reviews specified target
+- If no target + Vim connected: Reviews current file
+- Otherwise: Reviews entire codebase
+
+**Tool Usage Pattern**:
+```
+1. Analyze code files
+2. Use add_to_quickfix() for each issue found
+3. Format entries with:
+   - Exact line content (for robust positioning)
+   - Multi-line descriptions with emoji
+   - Appropriate severity levels (E/W/I)
+```
+
+**Example Output Structure**:
+```
+🔒 SECURITY: Hardcoded password detected
+Passwords in source code can be exposed in version control
+Move to environment variables or secure configuration
+```
+
+#### `/explain` - Code Documentation
+
+**Purpose**: Explain current code functionality and implementation
+
+**Context Usage**:
+- Always uses `get_editor_context()` to see current cursor position
+- Provides step-by-step explanation of code logic
+- Identifies potential issues or improvements
+
+#### `/fix` - Intelligent Issue Resolution
+
+**Purpose**: Fix code issues with context-aware detection
+
+**Smart Context Detection**:
+1. **Quickfix Priority**: Checks for current quickfix entry first
+2. **Editor Fallback**: Uses current cursor position if no quickfix
+3. **Parameter Override**: Uses provided target if specified
+
+**Quickfix Integration Flow**:
+```python
+# Create unique request ID for response correlation
+request_id = str(uuid.uuid4())
+response_queue = queue.Queue()
+vim_state.response_queues[request_id] = response_queue
+
+# Send request to Vim via queue system
+vim_state.request_queue.put(('get_current_quickfix', {
+    "method": "get_current_quickfix", 
+    "request_id": request_id,
+    "params": {}
+}))
+
+# Wait for response with timeout
+response_type, data = response_queue.get(timeout=2.0)
+```
+
+#### `/add_documentation` - Documentation Generation
+
+**Purpose**: Add appropriate documentation to current code
+
+**Features**:
+- Language-specific documentation patterns
+- Docstring generation following conventions
+- Inline comment suggestions
+- Type hint recommendations
+
+### Prompt Implementation Details
+
+#### Dynamic Prompt Generation
+
+Prompts are functions that return strings, allowing for:
+- Runtime context evaluation
+- Conditional prompt content
+- Parameter-based customization
+
+```python
+def review(target: str = None):
+    # Determine target based on context
+    if target is None and vim_state.is_connected():
+        context = vim_state.get_context()
+        target_str = context["filename"]
+        multifiles = False
+    else:
+        target_str = "the entire codebase"
+        multifiles = True
+    
+    # Generate context-specific prompt
+    prompt = f"Please review {target_str} for issues."
+    # ... add specific instructions
+    return prompt
+```
+
+#### Request/Response Correlation
+
+For prompts that need Vim state (like `/fix`):
+
+1. **Unique ID Generation**: `uuid.uuid4()` for each request
+2. **Queue Management**: Thread-safe response queues per request
+3. **Timeout Handling**: Graceful fallback if Vim doesn't respond
+4. **Cleanup**: Automatic queue cleanup after response
+
+#### Thread Safety
+
+The prompt system integrates with vim-q-connect's thread-safe architecture:
+
+- **VimState Class**: Centralized state management with mutex protection
+- **Request Queue**: Thread-safe queue for outgoing requests to Vim
+- **Response Queues**: Per-request queues for correlated responses
+- **Timeout Protection**: Prevents hanging on unresponsive Vim connections
+
+### Usage Patterns
+
+#### Basic Workflow
+```
+User: /review
+Q CLI: [Calls review() prompt]
+MCP Server: [Returns context-aware prompt]
+Q CLI: [Executes analysis using MCP tools]
+Result: Quickfix list populated with issues
+```
+
+#### Advanced Workflow with Parameters
+```
+User: /review src/security.py
+Q CLI: [Calls review(target="src/security.py")]
+MCP Server: [Returns targeted prompt]
+Q CLI: [Focuses analysis on specific file]
+```
+
+#### Fix Workflow Integration
+```
+User: /review                    # Populate quickfix
+Vim: :cnext                      # Navigate to issue
+User: /fix                       # Fix current issue
+Q CLI: [Gets current quickfix entry via MCP]
+MCP Server: [Returns fix prompt with issue context]
+Q CLI: [Applies targeted fix]
+```
+
+### Extension Points
+
+The prompt system is designed for easy extension:
+
+1. **New Prompts**: Add `@mcp.prompt()` decorated functions
+2. **Context Integration**: Use `vim_state.get_context()` for editor awareness
+3. **Tool Coordination**: Guide Q CLI to use appropriate MCP tools
+4. **Parameter Support**: Add optional parameters for customization
 
 ---
 
