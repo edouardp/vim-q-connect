@@ -233,6 +233,32 @@ This disconnects from the MCP server and stops sending context updates.
 | `:QVirtualTextClear` | Clear all inline annotations from current buffer |
 | `:QQuickfixAnnotate` | Manually annotate quickfix entries (usually automatic) |
 
+### Available Prompts
+
+vim-q-connect provides pre-built prompts that you can use with Q CLI. Access them by typing `/` in Q CLI:
+
+| Prompt | Description |
+|--------|-------------|
+| `review_code` | Review current code for security, quality, and best practices |
+| `explain_code` | Explain what the current code does and how it works |
+| `find_issues` | Scan codebase and populate quickfix list with all issues |
+| `fix_current_issue` | Fix the issue you're currently viewing in the quickfix list |
+| `add_documentation` | Add docstrings and comments to current code |
+| `optimize_performance` | Analyze and optimize performance of current code |
+
+**Example usage**:
+```
+You: /review_code
+Q: [Analyzes code and adds inline annotations for issues found]
+
+You: /find_issues
+Q: [Scans codebase and populates quickfix list]
+
+You: [Navigate to first issue with :cnext]
+You: /fix_current_issue
+Q: [Reads quickfix entry and applies the fix]
+```
+
 ## How to Use with Q CLI
 
 Once connected, Q CLI can access your editor context through several tools:

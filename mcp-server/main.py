@@ -39,6 +39,140 @@ logger = logging.getLogger("vim-context")
 
 mcp = FastMCP("vim-context")
 
+@mcp.prompt()
+def review_code():
+    """Review the current code for quality, security, and best practices
+    
+    Analyzes the code at the current cursor position and provides:
+    - Security vulnerabilities
+    - Code quality issues
+    - Performance concerns
+    - Best practice violations
+    
+    Results are added as inline annotations in the editor.
+    """
+    return """Please review the code I'm currently looking at in my editor for:
+
+1. Security vulnerabilities (SQL injection, XSS, authentication issues, etc.)
+2. Code quality issues (complexity, readability, maintainability)
+3. Performance concerns (inefficient algorithms, unnecessary operations)
+4. Best practice violations (naming conventions, error handling, etc.)
+
+For each issue found, use the add_virtual_text tool to add an inline annotation above the relevant line with:
+- An appropriate emoji (🔒 for security, ⚡ for performance, 🧹 for quality)
+- A brief description of the issue
+- Specific recommendations for fixing it
+
+Use the get_editor_context tool to see what code I'm looking at."""
+
+@mcp.prompt()
+def explain_code():
+    """Explain what the current code does
+    
+    Provides a clear explanation of the code at the current cursor position,
+    including its purpose, how it works, and any important details.
+    """
+    return """Please explain the code I'm currently looking at in my editor.
+
+Provide:
+1. What the code does (high-level purpose)
+2. How it works (step-by-step explanation)
+3. Any important details or edge cases
+4. Potential issues or improvements
+
+Use the get_editor_context tool to see what code I'm looking at."""
+
+@mcp.prompt()
+def find_issues():
+    """Find all issues in the current codebase
+    
+    Scans the codebase for quality, security, and performance issues,
+    then populates the quickfix list so the user can navigate through them.
+    """
+    return """Please analyze the codebase for issues and add them to the quickfix list.
+
+For each file in the codebase:
+1. Check for security vulnerabilities
+2. Check for code quality issues
+3. Check for performance problems
+4. Check for best practice violations
+
+Use the add_to_quickfix tool to add each issue with:
+- The exact line of code (use 'line' parameter, not 'line_number')
+- A multi-line description:
+  - First line: Brief issue description with emoji
+  - Second line: Explanation of why it's a problem
+  - Third line: Specific fix instructions
+- Appropriate type ('E' for errors, 'W' for warnings, 'I' for info)
+
+The user will navigate through issues using :cnext/:cprev in Vim."""
+
+@mcp.prompt()
+def fix_current_issue():
+    """Fix the current quickfix issue
+    
+    Reads the current quickfix entry the user is focused on and applies
+    the appropriate fix to resolve the issue.
+    """
+    return """Please fix the issue I'm currently looking at in the quickfix list.
+
+Steps:
+1. Use get_current_quickfix_entry to see what issue I'm on
+2. Read the file and understand the context around the issue
+3. Apply the appropriate fix to resolve the issue
+4. Explain what you changed and why
+
+Make sure the fix:
+- Addresses the root cause, not just the symptom
+- Follows best practices and coding standards
+- Doesn't introduce new issues
+- Is minimal and focused"""
+
+@mcp.prompt()
+def add_documentation():
+    """Add documentation to the current code
+    
+    Adds appropriate documentation (docstrings, comments) to the code
+    at the current cursor position.
+    """
+    return """Please add documentation to the code I'm currently looking at.
+
+Use the get_editor_context tool to see what code needs documentation.
+
+Add:
+1. Docstrings for functions/classes (following language conventions)
+2. Inline comments for complex logic
+3. Type hints (if applicable)
+4. Usage examples (if helpful)
+
+Make the documentation:
+- Clear and concise
+- Focused on "why" not just "what"
+- Helpful for future maintainers"""
+
+@mcp.prompt()
+def optimize_performance():
+    """Optimize the performance of the current code
+    
+    Analyzes the code for performance issues and suggests or implements
+    optimizations.
+    """
+    return """Please analyze and optimize the performance of the code I'm currently looking at.
+
+Use the get_editor_context tool to see the code.
+
+Look for:
+1. Inefficient algorithms (O(n²) that could be O(n), etc.)
+2. Unnecessary operations (redundant loops, repeated calculations)
+3. Memory issues (large allocations, memory leaks)
+4. I/O bottlenecks (excessive file/network operations)
+
+For each optimization opportunity:
+- Use add_virtual_text to annotate the issue with ⚡ emoji
+- Explain the current complexity/issue
+- Suggest the optimized approach
+- Estimate the performance improvement"""
+
 class VimState:
     """Thread-safe state manager for Vim editor connection and context.
     
