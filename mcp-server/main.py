@@ -53,8 +53,8 @@ def review(target: str = None):
             prompt += f"File: {context['filename']}\n"
             prompt += f"Line: {context['current_line']}\n"
             
-            if context.get('visual_selection') and context['visual_selection']['start_line'] != context['visual_selection']['end_line']:
-                prompt += f"Selection: lines {context['visual_selection']['start_line']}-{context['visual_selection']['end_line']}\n"
+            if context.get('visual_start', 0) > 0:
+                prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n"
             
             prompt += f"Line Content: {context['content']}\n\n"
             
