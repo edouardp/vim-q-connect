@@ -35,7 +35,12 @@ from pathlib import Path
 from fastmcp import FastMCP
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG, 
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename='mcp-server.log',
+    filemode='a'
+)
 logger = logging.getLogger("vim-context")
 
 mcp = FastMCP("vim-context")
@@ -592,11 +597,16 @@ def add_virtual_text(entries: list[dict]) -> str:
         return "Vim not connected to MCP socket"
     
     try:
+        logger.info(f"Adding batch virtual text: {len(entries)} entries")
+        for i, entry in enumerate(entries):
+            logger.debug(f"Entry {i}: {entry}")
+        
         vim_state.request_queue.put(('add_virtual_text_batch', {
             "method": "add_virtual_text_batch",
             "params": {"entries": entries}
         }))
         
+        logger.info(f"Successfully queued batch virtual text command")
         return f"Batch virtual text added: {len(entries)} entries"
     except Exception as e:
         logger.error(f"Error sending batch virtual text command: {e}")

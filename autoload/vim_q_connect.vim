@@ -44,9 +44,11 @@ function! HandleMCPMessage(channel, msg)
     call timer_start(0, {-> s:DoAddVirtualText(line_num, text, highlight, emoji)})
   elseif data.method == 'add_virtual_text_batch'
     if !has_key(data, 'params') || !has_key(data.params, 'entries')
+      echom "vim-q-connect: add_virtual_text_batch missing params or entries"
       return
     endif
     let entries = data.params.entries
+    echom "vim-q-connect: Processing " . len(entries) . " virtual text entries"
     call timer_start(0, {-> s:DoAddVirtualTextBatch(entries)})
   elseif data.method == 'add_to_quickfix'
     if !has_key(data, 'params') || !has_key(data.params, 'entries')
@@ -130,54 +132,76 @@ endfunction
 
 " Add virtual text above specified line
 function! s:DoAddVirtualText(line_num, text, highlight, emoji)
-  " Check if text properties are supported
-  if !has('textprop')
-    return
-  endif
-  
-  call s:InitPropTypes()
-  
-  " Always use qtext highlight (ignore passed highlight parameter)
-  let l:prop_type = 'q_virtual_text'
-  
-  " Check for existing props with same text to avoid duplicates
-  let existing_props = prop_list(a:line_num, {'type': l:prop_type})
-  
-  " Check if any existing prop contains the first line of our text
-  let first_line = split(a:text, '\n', 1)[0]
-  for prop in existing_props
-    if has_key(prop, 'text') && stridx(prop.text, first_line) >= 0
+  try
+    " Check if text properties are supported
+    if !has('textprop')
+      echom "vim-q-connect: Text properties not supported"
       return
     endif
-  endfor
-  
-  " Use provided emoji or default to fullwidth Q
-  let display_emoji = empty(a:emoji) ? 'Ｑ' : a:emoji
-  
-  " Split text on newlines for multi-line virtual text
-  let lines = split(a:text, '\n', 1)
-  let win_width = winwidth(0)
-  
-  for i in range(len(lines))
-    let line_text = lines[i]
     
-    " Format first line with emoji and connector, others with continuation
-    if i == 0
-      let formatted_text = ' ' . display_emoji . ' ┤ ' . line_text
-    else
-      " Calculate spacing to align with first line text
-      let spacing = strdisplaywidth(' ' . display_emoji . ' ')
-      let formatted_text = repeat(' ', spacing) . '│ ' . line_text
+    " Validate line number
+    if a:line_num <= 0 || a:line_num > line('$')
+      echom "vim-q-connect: Invalid line number " . a:line_num . " (file has " . line('$') . " lines)"
+      return
     endif
     
-    " Pad text to window width + 30 chars for full-line background
-    let padded_text = formatted_text . repeat(' ', win_width + 30 - strwidth(formatted_text))
-    call prop_add(a:line_num, 0, {
-      \ 'type': l:prop_type,
-      \ 'text': padded_text,
-      \ 'text_align': 'above'
-    \ })
-  endfor
+    call s:InitPropTypes()
+    
+    " Always use qtext highlight (ignore passed highlight parameter)
+    let l:prop_type = 'q_virtual_text'
+    
+    " Check for existing props with same text to avoid duplicates
+    let existing_props = prop_list(a:line_num, {'type': l:prop_type})
+    
+    " Check if any existing prop contains the first line of our text
+    let first_line = split(a:text, '\n', 1)[0]
+    for prop in existing_props
+      if has_key(prop, 'text') && stridx(prop.text, first_line) >= 0
+        echom "vim-q-connect: Duplicate virtual text detected at line " . a:line_num . ", skipping"
+        return
+      endif
+    endfor
+    
+    " Use provided emoji or default to fullwidth Q
+    let display_emoji = empty(a:emoji) ? 'Ｑ' : a:emoji
+    
+    " Split text on newlines for multi-line virtual text
+    let lines = split(a:text, '\n', 1)
+    let win_width = winwidth(0)
+    
+    echom "vim-q-connect: Adding virtual text at line " . a:line_num . " with " . len(lines) . " lines"
+    
+    for i in range(len(lines))
+      let line_text = lines[i]
+      
+      " Format first line with emoji and connector, others with continuation
+      if i == 0
+        let formatted_text = ' ' . display_emoji . ' ┤ ' . line_text
+      else
+        " Calculate spacing to align with first line text
+        let spacing = strdisplaywidth(' ' . display_emoji . ' ')
+        let formatted_text = repeat(' ', spacing) . '│ ' . line_text
+      endif
+      
+      " Pad text to window width + 30 chars for full-line background
+      let padded_text = formatted_text . repeat(' ', win_width + 30 - strwidth(formatted_text))
+      
+      try
+        call prop_add(a:line_num, 0, {
+          \ 'type': l:prop_type,
+          \ 'text': padded_text,
+          \ 'text_align': 'above'
+        \ })
+      catch
+        echom "vim-q-connect: Error adding prop at line " . a:line_num . ": " . v:exception
+        throw v:exception
+      endtry
+    endfor
+    
+    echom "vim-q-connect: Successfully added virtual text at line " . a:line_num
+  catch
+    echom "vim-q-connect: Error in DoAddVirtualText: " . v:exception . " at " . v:throwpoint
+  endtry
 endfunction
 
 " Clear all Q Connect virtual text
@@ -490,86 +514,111 @@ endfunction
 
 " Add multiple virtual text entries efficiently
 function! s:DoAddVirtualTextBatch(entries)
-  for entry in a:entries
-    " Validate required field
-    if !has_key(entry, 'line') || !has_key(entry, 'text')
-      continue
-    endif
+  try
+    echom "vim-q-connect: DoAddVirtualTextBatch called with " . len(a:entries) . " entries"
+    let processed = 0
+    let skipped = 0
     
-    " Extract emoji from text if not provided
-    let text = entry.text
-    let emoji = get(entry, 'emoji', '')
-    
-    if empty(emoji) && !empty(text)
-      " Extract leading emoji by checking Unicode code points
-      let emoji = ''
-      let idx = 0
-      while idx < strchars(text)
-        let char = strcharpart(text, idx, 1)
-        let codepoint = char2nr(char)
-        " Check if in emoji ranges: 
-        " U+1F300-U+1F9FF (Emoticons, Transport, etc.)
-        " U+2600-U+26FF (Miscellaneous Symbols)
-        " U+2700-U+27BF (Dingbats) 
-        " U+2300-U+23FF (Miscellaneous Technical - includes ⏱)
-        " U+2100-U+214F (Letterlike Symbols - includes ℹ)
-        " U+FE00-U+FE0F (Variation Selectors)
-        if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || 
-         \ (codepoint >= 0x2600 && codepoint <= 0x27BF) ||
-         \ (codepoint >= 0x2300 && codepoint <= 0x23FF) ||
-         \ (codepoint >= 0x2100 && codepoint <= 0x214F) ||
-         \ (codepoint >= 0xFE00 && codepoint <= 0xFE0F)
-          let emoji .= char
-          let idx += 1
-        else
-          break
+    for entry in a:entries
+      try
+        " Validate required field
+        if !has_key(entry, 'line') || !has_key(entry, 'text')
+          echom "vim-q-connect: Skipping entry missing line or text: " . string(entry)
+          let skipped += 1
+          continue
         endif
-      endwhile
-      if !empty(emoji)
-        " Remove emoji and following whitespace from text
-        let text = strcharpart(text, strchars(emoji))
-        let text = substitute(text, '^\s\+', '', '')
-      endif
-    endif
-    
-    " Find line by text content
-    let line_matches = s:FindAllLinesByText(entry.line)
-    let line_num = 0
-    
-    if len(line_matches) == 1
-      " Single match - use it
-      let line_num = line_matches[0]
-    elseif len(line_matches) > 1
-      " Multiple matches - use line_number_hint if provided
-      if has_key(entry, 'line_number_hint')
-        let hint = entry.line_number_hint
-        " Find closest match to hint
-        let closest_match = line_matches[0]
-        let min_distance = abs(closest_match - hint)
-        for match in line_matches[1:]
-          let distance = abs(match - hint)
-          if distance < min_distance
-            let min_distance = distance
-            let closest_match = match
+        
+        " Extract emoji from text if not provided
+        let text = entry.text
+        let emoji = get(entry, 'emoji', '')
+        
+        if empty(emoji) && !empty(text)
+          " Extract leading emoji by checking Unicode code points
+          let emoji = ''
+          let idx = 0
+          while idx < strchars(text)
+            let char = strcharpart(text, idx, 1)
+            let codepoint = char2nr(char)
+            " Check if in emoji ranges: 
+            " U+1F300-U+1F9FF (Emoticons, Transport, etc.)
+            " U+2600-U+26FF (Miscellaneous Symbols)
+            " U+2700-U+27BF (Dingbats) 
+            " U+2300-U+23FF (Miscellaneous Technical - includes ⏱)
+            " U+2100-U+214F (Letterlike Symbols - includes ℹ)
+            " U+FE00-U+FE0F (Variation Selectors)
+            if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || 
+             \ (codepoint >= 0x2600 && codepoint <= 0x27BF) ||
+             \ (codepoint >= 0x2300 && codepoint <= 0x23FF) ||
+             \ (codepoint >= 0x2100 && codepoint <= 0x214F) ||
+             \ (codepoint >= 0xFE00 && codepoint <= 0xFE0F)
+              let emoji .= char
+              let idx += 1
+            else
+              break
+            endif
+          endwhile
+          if !empty(emoji)
+            " Remove emoji and following whitespace from text
+            let text = strcharpart(text, strchars(emoji))
+            let text = substitute(text, '^\s\+', '', '')
           endif
-        endfor
-        let line_num = closest_match
-      else
-        " No hint - use first match
-        let line_num = line_matches[0]
-      endif
-    else
-      " No matches - use line_number_hint if provided
-      if has_key(entry, 'line_number_hint')
-        let line_num = entry.line_number_hint
-      else
-        continue  " Skip if no line found and no hint
-      endif
-    endif
+        endif
+        
+        " Find line by text content
+        let line_matches = s:FindAllLinesByText(entry.line)
+        let line_num = 0
+        
+        if len(line_matches) == 1
+          " Single match - use it
+          let line_num = line_matches[0]
+          echom "vim-q-connect: Found single line match at " . line_num . " for: " . entry.line[:50]
+        elseif len(line_matches) > 1
+          " Multiple matches - use line_number_hint if provided
+          if has_key(entry, 'line_number_hint')
+            let hint = entry.line_number_hint
+            " Find closest match to hint
+            let closest_match = line_matches[0]
+            let min_distance = abs(closest_match - hint)
+            for match in line_matches[1:]
+              let distance = abs(match - hint)
+              if distance < min_distance
+                let min_distance = distance
+                let closest_match = match
+              endif
+            endfor
+            let line_num = closest_match
+            echom "vim-q-connect: Found " . len(line_matches) . " matches, using closest to hint " . hint . ": " . line_num
+          else
+            " No hint - use first match
+            let line_num = line_matches[0]
+            echom "vim-q-connect: Found " . len(line_matches) . " matches, using first: " . line_num
+          endif
+        else
+          " No matches - use line_number_hint if provided
+          if has_key(entry, 'line_number_hint')
+            let line_num = entry.line_number_hint
+            echom "vim-q-connect: No line matches found, using hint: " . line_num
+          else
+            echom "vim-q-connect: No line matches and no hint for: " . entry.line[:50]
+            let skipped += 1
+            continue  " Skip if no line found and no hint
+          endif
+        endif
+        
+        let highlight = get(entry, 'highlight', 'Comment')
+        call s:DoAddVirtualText(line_num, text, highlight, emoji)
+        let processed += 1
+        
+      catch
+        echom "vim-q-connect: Error processing entry: " . v:exception . " at " . v:throwpoint
+        let skipped += 1
+      endtry
+    endfor
     
-    let highlight = get(entry, 'highlight', 'Comment')
-    call s:DoAddVirtualText(line_num, text, highlight, emoji)
-  endfor
+    echom "vim-q-connect: Batch complete - processed: " . processed . ", skipped: " . skipped
+  catch
+    echom "vim-q-connect: Error in DoAddVirtualTextBatch: " . v:exception . " at " . v:throwpoint
+  endtry
 endfunction
 
 " Find line number by searching for text content
@@ -860,28 +909,44 @@ endfunction
 
 " Find all line numbers by searching for text content in current buffer
 function! s:FindAllLinesByText(line_text)
-  let total_lines = line('$')
-  let matches = []
-  
-  " First pass: exact matches (including whitespace)
-  for i in range(1, total_lines)
-    let line = getline(i)
-    if line ==# a:line_text
-      call add(matches, i)
+  try
+    let total_lines = line('$')
+    let matches = []
+    
+    if empty(a:line_text)
+      echom "vim-q-connect: Empty line_text provided to FindAllLinesByText"
+      return matches
     endif
-  endfor
-  
-  " Second pass: trimmed matches (only if no exact matches found)
-  if empty(matches)
+    
+    " First pass: exact matches (including whitespace)
     for i in range(1, total_lines)
       let line = getline(i)
-      if trim(line) ==# trim(a:line_text)
+      if line ==# a:line_text
         call add(matches, i)
       endif
     endfor
-  endif
-  
-  return matches
+    
+    " Second pass: trimmed matches (only if no exact matches found)
+    if empty(matches)
+      for i in range(1, total_lines)
+        let line = getline(i)
+        if trim(line) ==# trim(a:line_text)
+          call add(matches, i)
+        endif
+      endfor
+    endif
+    
+    if empty(matches)
+      echom "vim-q-connect: No matches found for line: " . a:line_text[:50]
+    else
+      echom "vim-q-connect: Found " . len(matches) . " matches for line: " . a:line_text[:50]
+    endif
+    
+    return matches
+  catch
+    echom "vim-q-connect: Error in FindAllLinesByText: " . v:exception . " at " . v:throwpoint
+    return []
+  endtry
 endfunction
 
 " Annotate quickfix entries as virtual text
