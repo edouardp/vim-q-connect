@@ -232,37 +232,37 @@ This disconnects from the MCP server and stops sending context updates.
 
 ### Available Prompts
 
-vim-q-connect provides pre-built prompts that you can use with Q CLI. Access them by typing `/` in Q CLI:
+vim-q-connect provides pre-built prompts that you can use with Q CLI. Access them by typing `@` in Q CLI:
 
 | Prompt | Description | Best Used When |
 |--------|-------------|----------------|
-| `/review` | Comprehensive code review for security, quality, performance, and best practices. Populates quickfix list with issues and adds inline annotations. | You want a thorough analysis of your code with actionable findings |
-| `/explain` | Detailed explanation of what the current code does, how it works, and important details. | You're reading unfamiliar code or need to understand complex logic |
-| `/fix` | Intelligently fixes code issues. Auto-detects current quickfix issue or analyzes current code context. | You have a specific issue to resolve or want to fix problems in your current code |
-| `/doc` | Adds comprehensive documentation including docstrings, inline comments, and type hints. | Your code lacks documentation or you want to improve maintainability |
+| `@review` | Comprehensive code review for security, quality, performance, and best practices. Populates quickfix list with issues and adds inline annotations. | You want a thorough analysis of your code with actionable findings |
+| `@explain` | Detailed explanation of what the current code does, how it works, and important details. | You're reading unfamiliar code or need to understand complex logic |
+| `@fix` | Intelligently fixes code issues. Auto-detects current quickfix issue or analyzes current code context. | You have a specific issue to resolve or want to fix problems in your current code |
+| `@doc` | Adds comprehensive documentation including docstrings, inline comments, and type hints. | Your code lacks documentation or you want to improve maintainability |
 
 **Key Features**:
 - **Context-aware**: All prompts automatically know your current file, cursor position, and selected text
-- **Quickfix integration**: `/review` populates Vim's quickfix list for easy navigation
-- **Smart targeting**: Use optional parameters (e.g., `/fix "performance issues"`) for specific focus
+- **Quickfix integration**: `@review` populates Vim's quickfix list for easy navigation
+- **Smart targeting**: Use optional parameters (e.g., `@fix "performance issues"`) for specific focus
 - **Inline annotations**: Visual feedback appears directly in your editor
 
 **Example workflows**:
 ```
 # Comprehensive code review
-You: /review
+You: @review
 Q: [Analyzes code, adds quickfix entries and inline annotations]
 You: :cnext  [Navigate to first issue]
-You: /fix    [Fix the current quickfix issue]
+You: @fix    [Fix the current quickfix issue]
 
 # Understanding unfamiliar code
 You: [Select a complex function]
-You: /explain
+You: @explain
 Q: [Explains the selected function in detail]
 
 # Adding documentation
 You: [Position cursor in undocumented function]
-You: /doc
+You: @doc
 Q: [Adds docstrings, comments, and type hints]
 ```
 

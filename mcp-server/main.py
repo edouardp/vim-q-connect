@@ -35,12 +35,15 @@ from pathlib import Path
 from fastmcp import FastMCP
 
 # Set up logging
-logging.basicConfig(
-    level=logging.DEBUG, 
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='mcp-server.log',
-    filemode='a'
-)
+log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
+log_file = os.environ.get('LOG_FILE')
+log_config = {
+    'level': getattr(logging, log_level, logging.INFO),
+    'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+}
+if log_file:
+    log_config.update({'filename': log_file, 'filemode': 'a'})
+logging.basicConfig(**log_config)
 logger = logging.getLogger("vim-context")
 
 mcp = FastMCP("vim-context")

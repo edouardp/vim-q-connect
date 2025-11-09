@@ -133,6 +133,27 @@ function! s:InitPropTypes()
   endif
 endfunction
 
+" Extract emoji from beginning of text
+function! s:ExtractEmoji(text)
+  let emoji = ''
+  let idx = 0
+  while idx < strchars(a:text)
+    let char = strcharpart(a:text, idx, 1)
+    let codepoint = char2nr(char)
+    if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || 
+     \ (codepoint >= 0x2600 && codepoint <= 0x27BF) ||
+     \ (codepoint >= 0x2300 && codepoint <= 0x23FF) ||
+     \ (codepoint >= 0x2100 && codepoint <= 0x214F) ||
+     \ (codepoint >= 0xFE00 && codepoint <= 0xFE0F)
+      let emoji .= char
+      let idx += 1
+    else
+      break
+    endif
+  endwhile
+  return emoji
+endfunction
+
 " Add virtual text above specified line
 function! s:DoAddVirtualText(line_num, text, highlight, emoji)
   try
@@ -550,30 +571,7 @@ function! s:DoAddVirtualTextBatch(entries)
         let emoji = get(entry, 'emoji', '')
         
         if empty(emoji) && !empty(text)
-          " Extract leading emoji by checking Unicode code points
-          let emoji = ''
-          let idx = 0
-          while idx < strchars(text)
-            let char = strcharpart(text, idx, 1)
-            let codepoint = char2nr(char)
-            " Check if in emoji ranges: 
-            " U+1F300-U+1F9FF (Emoticons, Transport, etc.)
-            " U+2600-U+26FF (Miscellaneous Symbols)
-            " U+2700-U+27BF (Dingbats) 
-            " U+2300-U+23FF (Miscellaneous Technical - includes ⏱)
-            " U+2100-U+214F (Letterlike Symbols - includes ℹ)
-            " U+FE00-U+FE0F (Variation Selectors)
-            if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || 
-             \ (codepoint >= 0x2600 && codepoint <= 0x27BF) ||
-             \ (codepoint >= 0x2300 && codepoint <= 0x23FF) ||
-             \ (codepoint >= 0x2100 && codepoint <= 0x214F) ||
-             \ (codepoint >= 0xFE00 && codepoint <= 0xFE0F)
-              let emoji .= char
-              let idx += 1
-            else
-              break
-            endif
-          endwhile
+          let emoji = s:ExtractEmoji(text)
           if !empty(emoji)
             " Remove emoji and following whitespace from text
             let text = strcharpart(text, strchars(emoji))
@@ -896,18 +894,7 @@ function! s:AnnotateCurrentBuffer()
   for entry in qf_list
     if has_key(entry, 'bufnr') && entry.bufnr == current_buf && has_key(entry, 'lnum') && has_key(entry, 'text')
       let text = entry.text
-      let emoji = ''
-      let idx = 0
-      while idx < strchars(text)
-        let char = strcharpart(text, idx, 1)
-        let codepoint = char2nr(char)
-        if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || (codepoint >= 0x2600 && codepoint <= 0x27BF)
-          let emoji .= char
-          let idx += 1
-        else
-          break
-        endif
-      endwhile
+      let emoji = s:ExtractEmoji(text)
       if !empty(emoji)
         let text = strcharpart(text, strchars(emoji))
         let text = substitute(text, '^\s\+', '', '')
@@ -984,20 +971,7 @@ function! vim_q_connect#quickfix_annotate()
       if index(window_buffers, entry.bufnr) >= 0
         " Extract emoji from text and clean the text
         let text = entry.text
-        let emoji = ''
-        " Extract leading emoji by checking Unicode code points
-        let idx = 0
-        while idx < strchars(text)
-          let char = strcharpart(text, idx, 1)
-          let codepoint = char2nr(char)
-          " Check if in emoji ranges: U+1F300-U+1F9FF, U+2600-U+26FF, U+2700-U+27BF
-          if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || (codepoint >= 0x2600 && codepoint <= 0x27BF)
-            let emoji .= char
-            let idx += 1
-          else
-            break
-          endif
-        endwhile
+        let emoji = s:ExtractEmoji(text)
         if !empty(emoji)
           let text = strcharpart(text, strchars(emoji))
           let text = substitute(text, '^\s\+', '', '')
