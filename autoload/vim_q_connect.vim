@@ -44,11 +44,11 @@ function! HandleMCPMessage(channel, msg)
     call timer_start(0, {-> s:DoAddVirtualText(line_num, text, highlight, emoji)})
   elseif data.method == 'add_virtual_text_batch'
     if !has_key(data, 'params') || !has_key(data.params, 'entries')
-      echom "vim-q-connect: add_virtual_text_batch missing params or entries"
+      " echom "vim-q-connect: add_virtual_text_batch missing params or entries"
       return
     endif
     let entries = data.params.entries
-    echom "vim-q-connect: Processing " . len(entries) . " virtual text entries"
+    " echom "vim-q-connect: Processing " . len(entries) . " virtual text entries"
     call timer_start(0, {-> s:DoAddVirtualTextBatch(entries)})
   elseif data.method == 'add_to_quickfix'
     if !has_key(data, 'params') || !has_key(data.params, 'entries')
@@ -65,6 +65,8 @@ function! HandleMCPMessage(channel, msg)
   elseif data.method == 'clear_annotations'
     let filename = get(data.params, 'filename', '')
     call timer_start(0, {-> s:DoClearAnnotations(filename)})
+  elseif data.method == 'clear_quickfix'
+    call timer_start(0, {-> s:DoClearQuickfix()})
   endif
 endfunction
 
@@ -165,7 +167,7 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
     
     " Validate line number
     if a:line_num <= 0 || a:line_num > line('$')
-      echom "vim-q-connect: Invalid line number " . a:line_num . " (file has " . line('$') . " lines)"
+      " echom "vim-q-connect: Invalid line number " . a:line_num . " (file has " . line('$') . " lines)"
       return
     endif
     
@@ -181,7 +183,7 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
     let first_line = split(a:text, '\n', 1)[0]
     for prop in existing_props
       if has_key(prop, 'text') && stridx(prop.text, first_line) >= 0
-        echom "vim-q-connect: Duplicate virtual text detected at line " . a:line_num . ", skipping"
+        " echom "vim-q-connect: Duplicate virtual text detected at line " . a:line_num . ", skipping"
         return
       endif
     endfor
@@ -193,7 +195,7 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
     let lines = split(a:text, '\n', 1)
     let win_width = winwidth(0)
     
-    echom "vim-q-connect: Adding virtual text at line " . a:line_num . " with " . len(lines) . " lines"
+    " echom "vim-q-connect: Adding virtual text at line " . a:line_num . " with " . len(lines) . " lines"
     
     for i in range(len(lines))
       let line_text = lines[i]
@@ -217,14 +219,14 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
           \ 'text_align': 'above'
         \ })
       catch
-        echom "vim-q-connect: Error adding prop at line " . a:line_num . ": " . v:exception
+        " echom "vim-q-connect: Error adding prop at line " . a:line_num . ": " . v:exception
         throw v:exception
       endtry
     endfor
     
-    echom "vim-q-connect: Successfully added virtual text at line " . a:line_num
+    " echom "vim-q-connect: Successfully added virtual text at line " . a:line_num
   catch
-    echom "vim-q-connect: Error in DoAddVirtualText: " . v:exception . " at " . v:throwpoint
+    " echom "vim-q-connect: Error in DoAddVirtualText: " . v:exception . " at " . v:throwpoint
   endtry
 endfunction
 
@@ -245,6 +247,14 @@ function! s:DoClearAnnotations(filename)
       call prop_remove({'type': 'q_virtual_text', 'all': 1, 'bufnr': target_bufnr})
     endif
   endif
+endfunction
+
+" Clear quickfix list
+function! s:DoClearQuickfix()
+  " TODO: Only remove annotations that were added for quickfix entries, not all annotations
+  call prop_remove({'type': 'q_virtual_text', 'all': 1})
+  call setqflist([])
+  cclose
 endfunction
 
 " Get current quickfix entry
@@ -553,7 +563,7 @@ endfunction
 " Add multiple virtual text entries efficiently
 function! s:DoAddVirtualTextBatch(entries)
   try
-    echom "vim-q-connect: DoAddVirtualTextBatch called with " . len(a:entries) . " entries"
+    " echom "vim-q-connect: DoAddVirtualTextBatch called with " . len(a:entries) . " entries"
     let processed = 0
     let skipped = 0
     
@@ -561,7 +571,7 @@ function! s:DoAddVirtualTextBatch(entries)
       try
         " Validate required field
         if !has_key(entry, 'line') || !has_key(entry, 'text')
-          echom "vim-q-connect: Skipping entry missing line or text: " . string(entry)
+          " echom "vim-q-connect: Skipping entry missing line or text: " . string(entry)
           let skipped += 1
           continue
         endif
@@ -586,7 +596,7 @@ function! s:DoAddVirtualTextBatch(entries)
         if len(line_matches) == 1
           " Single match - use it
           let line_num = line_matches[0]
-          echom "vim-q-connect: Found single line match at " . line_num . " for: " . entry.line[:50]
+          " echom "vim-q-connect: Found single line match at " . line_num . " for: " . entry.line[:50]
         elseif len(line_matches) > 1
           " Multiple matches - use line_number_hint if provided
           if has_key(entry, 'line_number_hint')
@@ -602,19 +612,19 @@ function! s:DoAddVirtualTextBatch(entries)
               endif
             endfor
             let line_num = closest_match
-            echom "vim-q-connect: Found " . len(line_matches) . " matches, using closest to hint " . hint . ": " . line_num
+            " echom "vim-q-connect: Found " . len(line_matches) . " matches, using closest to hint " . hint . ": " . line_num
           else
             " No hint - use first match
             let line_num = line_matches[0]
-            echom "vim-q-connect: Found " . len(line_matches) . " matches, using first: " . line_num
+            " echom "vim-q-connect: Found " . len(line_matches) . " matches, using first: " . line_num
           endif
         else
           " No matches - use line_number_hint if provided
           if has_key(entry, 'line_number_hint')
             let line_num = entry.line_number_hint
-            echom "vim-q-connect: No line matches found, using hint: " . line_num
+            " echom "vim-q-connect: No line matches found, using hint: " . line_num
           else
-            echom "vim-q-connect: No line matches and no hint for: " . entry.line[:50]
+            " echom "vim-q-connect: No line matches and no hint for: " . entry.line[:50]
             let skipped += 1
             continue  " Skip if no line found and no hint
           endif
@@ -625,14 +635,14 @@ function! s:DoAddVirtualTextBatch(entries)
         let processed += 1
         
       catch
-        echom "vim-q-connect: Error processing entry: " . v:exception . " at " . v:throwpoint
+        " echom "vim-q-connect: Error processing entry: " . v:exception . " at " . v:throwpoint
         let skipped += 1
       endtry
     endfor
     
-    echom "vim-q-connect: Batch complete - processed: " . processed . ", skipped: " . skipped
+    " echom "vim-q-connect: Batch complete - processed: " . processed . ", skipped: " . skipped
   catch
-    echom "vim-q-connect: Error in DoAddVirtualTextBatch: " . v:exception . " at " . v:throwpoint
+    " echom "vim-q-connect: Error in DoAddVirtualTextBatch: " . v:exception . " at " . v:throwpoint
   endtry
 endfunction
 
@@ -785,7 +795,7 @@ function! s:FindLineByTextInFile(line_text, filename, ...)
   
   " Read file directly instead of using buffers
   if !filereadable(a:filename)
-    echom "File not readable: " . a:filename
+    " echom "File not readable: " . a:filename
     return 0
   endif
   
@@ -918,7 +928,7 @@ function! s:FindAllLinesByText(line_text)
     let matches = []
     
     if empty(a:line_text)
-      echom "vim-q-connect: Empty line_text provided to FindAllLinesByText"
+      " echom "vim-q-connect: Empty line_text provided to FindAllLinesByText"
       return matches
     endif
     
@@ -941,14 +951,14 @@ function! s:FindAllLinesByText(line_text)
     endif
     
     if empty(matches)
-      echom "vim-q-connect: No matches found for line: " . a:line_text[:50]
+      " echom "vim-q-connect: No matches found for line: " . a:line_text[:50]
     else
-      echom "vim-q-connect: Found " . len(matches) . " matches for line: " . a:line_text[:50]
+      " echom "vim-q-connect: Found " . len(matches) . " matches for line: " . a:line_text[:50]
     endif
     
     return matches
   catch
-    echom "vim-q-connect: Error in FindAllLinesByText: " . v:exception . " at " . v:throwpoint
+    " echom "vim-q-connect: Error in FindAllLinesByText: " . v:exception . " at " . v:throwpoint
     return []
   endtry
 endfunction

@@ -707,6 +707,31 @@ def get_current_quickfix_entry() -> dict:
         return {"error": f"Error requesting quickfix entry: {e}"}
 
 @mcp.tool()
+def clear_quickfix() -> str:
+    """Clear all entries from Vim's quickfix list.
+    
+    Removes all quickfix entries and closes the quickfix window if open.
+    Useful for cleaning up after resolving issues or starting fresh analysis.
+    
+    Returns:
+        Status message indicating success or failure
+    """
+    
+    if not vim_state.is_connected():
+        return "Vim not connected to MCP socket"
+    
+    try:
+        vim_state.request_queue.put(('clear_quickfix', {
+            "method": "clear_quickfix",
+            "params": {}
+        }))
+        
+        return "Cleared quickfix list"
+    except Exception as e:
+        logger.error(f"Error sending clear quickfix command: {e}")
+        return f"Error sending clear quickfix command: {e}"
+
+@mcp.tool()
 def get_annotations_above_current_position() -> str:
     """Get all text property annotations above the current cursor position.
     
