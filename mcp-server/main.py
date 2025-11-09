@@ -747,6 +747,37 @@ def get_annotations_above_current_position() -> str:
         logger.error(f"Error requesting annotations: {e}")
         return f"Error requesting annotations: {e}"
 
+@mcp.tool()
+def clear_annotations(filename: str = "") -> str:
+    """Clear all virtual text annotations from a specific file or current buffer in Vim.
+    
+    Removes all inline annotations and virtual text that were previously added
+    using add_virtual_text. This is useful for cleaning up after code reviews
+    or when annotations are no longer needed.
+    
+    Args:
+        filename (str, optional): File path to clear annotations from. 
+                                 If empty, clears from current buffer.
+    
+    Returns:
+        Status message indicating success or failure
+    """
+    
+    if not vim_state.is_connected():
+        return "Vim not connected to MCP socket"
+    
+    try:
+        vim_state.request_queue.put(('clear_annotations', {
+            "method": "clear_annotations",
+            "params": {"filename": filename}
+        }))
+        
+        target = f"from {filename}" if filename else "from current buffer"
+        return f"Cleared all annotations {target}"
+    except Exception as e:
+        logger.error(f"Error sending clear annotations command: {e}")
+        return f"Error sending clear annotations command: {e}"
+
 def cleanup_and_exit():
     """Clean up resources and exit gracefully"""
     logger.info("Shutting down MCP server...")

@@ -62,6 +62,9 @@ function! HandleMCPMessage(channel, msg)
   elseif data.method == 'get_current_quickfix'
     let request_id = get(data, 'request_id', '')
     call timer_start(0, {-> s:DoGetCurrentQuickfix(request_id)})
+  elseif data.method == 'clear_annotations'
+    let filename = get(data.params, 'filename', '')
+    call timer_start(0, {-> s:DoClearAnnotations(filename)})
   endif
 endfunction
 
@@ -207,6 +210,20 @@ endfunction
 " Clear all Q Connect virtual text
 function! vim_q_connect#clear_virtual_text()
   call prop_remove({'type': 'q_virtual_text', 'all': 1})
+endfunction
+
+" Clear annotations from specific file or current buffer
+function! s:DoClearAnnotations(filename)
+  if empty(a:filename)
+    " Clear from current buffer
+    call prop_remove({'type': 'q_virtual_text', 'all': 1})
+  else
+    " Clear from specific file
+    let target_bufnr = bufnr(a:filename)
+    if target_bufnr != -1
+      call prop_remove({'type': 'q_virtual_text', 'all': 1, 'bufnr': target_bufnr})
+    endif
+  endif
 endfunction
 
 " Get current quickfix entry
