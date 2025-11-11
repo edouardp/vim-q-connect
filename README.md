@@ -173,14 +173,20 @@ Create `~/.aws/amazonq/cli-agents/vim-q-connect.json`:
 
 ### Socket Location
 
-The MCP server automatically creates a Unix socket at `.vim-q-mcp.sock` in the current working directory when Q CLI starts. The `run-mcp.sh` script handles socket path configuration automatically.
+The MCP server automatically creates a Unix socket in `/tmp/vim-q-connect/{SHA256}/sock` where `{SHA256}` is the hash of the current working directory. This approach ensures:
+
+- Socket paths never exceed Unix domain socket length limits
+- Each project directory gets its own unique socket
+- Sockets are automatically cleaned up on system restart
+
+The `run-mcp.sh` script handles socket path configuration automatically.
 
 ### Vim Settings
 
 The plugin works out of the box with no configuration required. However, you can customize the socket path if needed:
 
 ```vim
-" Optional: Override socket path (default: getcwd() . '/.vim-q-mcp.sock')
+" Optional: Override socket path (default: /tmp/vim-q-connect/{hash}/sock)
 let g:vim_q_connect_socket_path = '/custom/path/.vim-q-mcp.sock'
 ```
 
@@ -393,7 +399,7 @@ ps aux | grep "python.*main.py"
 **Check socket exists**:
 
 ```bash
-ls -la .vim-q-mcp.sock  # in current working directory
+ls -la /tmp/vim-q-connect/$(echo -n $(pwd) | shasum -a 256 | cut -d' ' -f1)/sock
 ```
 
 **Check Q CLI configuration**:

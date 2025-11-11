@@ -31,6 +31,7 @@ import logging
 import queue
 import uuid
 import signal
+import hashlib
 from pathlib import Path
 from fastmcp import FastMCP
 
@@ -420,10 +421,16 @@ def handle_vim_message(message):
     except Exception as e:
         logger.error(f"Error handling Vim message: {e}")
 
+def get_socket_path():
+    """Get socket path, using hashed directory structure for long paths"""
+    cwd_hash = hashlib.sha256(os.getcwd().encode()).hexdigest()
+    socket_dir = Path(f"/tmp/vim-q-connect/{cwd_hash}")
+    socket_dir.mkdir(parents=True, exist_ok=True)
+    return str(socket_dir / "sock")
+
 def start_socket_server():
     
-    socket_dir = os.environ.get('SOCKET_DIR', '.')
-    socket_path = os.path.join(socket_dir, '.vim-q-mcp.sock')
+    socket_path = get_socket_path()
     
     logger.info(f"Creating MCP socket at: {socket_path}")
     

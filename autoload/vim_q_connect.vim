@@ -405,6 +405,14 @@ function! PushContextUpdate()
   endtry
 endfunction
 
+" Get socket path, using hashed directory structure for long paths
+function! s:GetSocketPath()
+    let l:cwd_hash = sha256(getcwd())
+    let l:socket_dir = '/tmp/vim-q-connect/' . l:cwd_hash
+    call mkdir(l:socket_dir, 'p')
+    return l:socket_dir . '/sock'
+endfunction
+
 " Establish connection to Q CLI MCP server
 " Uses Unix domain socket at path defined by g:vim_q_connect_socket_path
 function! StartMCPServer()
@@ -414,7 +422,7 @@ function! StartMCPServer()
   
   " Set socket path at connection time if not configured
   if !exists('g:vim_q_connect_socket_path')
-    let g:vim_q_connect_socket_path = getcwd() . '/.vim-q-mcp.sock'
+    let g:vim_q_connect_socket_path = s:GetSocketPath()
   endif
   
   try
