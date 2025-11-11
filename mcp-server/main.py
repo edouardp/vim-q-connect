@@ -423,7 +423,7 @@ def handle_vim_message(message):
 
 def get_socket_path():
     """Get socket path, using hashed directory structure for long paths"""
-    cwd_hash = hashlib.sha256(os.getcwd().encode()).hexdigest()
+    cwd_hash = hashlib.sha256(os.environ.get('SOCKET_DIR', os.getcwd()).encode()).hexdigest()
     socket_dir = Path(f"/tmp/vim-q-connect/{cwd_hash}")
     socket_dir.mkdir(parents=True, exist_ok=True)
     return str(socket_dir / "sock")
