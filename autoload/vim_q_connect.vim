@@ -235,6 +235,11 @@ function! vim_q_connect#clear_virtual_text()
   call prop_remove({'type': 'q_virtual_text', 'all': 1})
 endfunction
 
+" Clear quickfix list and annotations
+function! vim_q_connect#clear_quickfix()
+  call s:DoClearQuickfix()
+endfunction
+
 " Clear annotations from specific file or current buffer
 function! s:DoClearAnnotations(filename)
   if empty(a:filename)
