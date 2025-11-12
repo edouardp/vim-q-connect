@@ -584,16 +584,21 @@ function! s:DoAddVirtualTextBatch(entries)
           continue
         endif
         
-        " Extract emoji from text if not provided
+        " Handle emoji: use provided emoji field, but always consume emoji from text
         let text = entry.text
         let emoji = get(entry, 'emoji', '')
         
-        if empty(emoji) && !empty(text)
-          let emoji = s:ExtractEmoji(text)
-          if !empty(emoji)
+        " Always extract and consume emoji from beginning of text
+        if !empty(text)
+          let text_emoji = s:ExtractEmoji(text)
+          if !empty(text_emoji)
             " Remove emoji and following whitespace from text
-            let text = strcharpart(text, strchars(emoji))
+            let text = strcharpart(text, strchars(text_emoji))
             let text = substitute(text, '^\s\+', '', '')
+            " Use provided emoji field, or fall back to extracted emoji
+            if empty(emoji)
+              let emoji = text_emoji
+            endif
           endif
         endif
         
@@ -912,15 +917,21 @@ function! s:AnnotateCurrentBuffer()
   for entry in qf_list
     if has_key(entry, 'bufnr') && entry.bufnr == current_buf && has_key(entry, 'lnum') && has_key(entry, 'text')
       let text = entry.text
-      let emoji = s:ExtractEmoji(text)
-      if !empty(emoji)
-        let text = strcharpart(text, strchars(emoji))
+      let emoji = ''
+      
+      " Always extract and consume emoji from text
+      let text_emoji = s:ExtractEmoji(text)
+      if !empty(text_emoji)
+        let text = strcharpart(text, strchars(text_emoji))
         let text = substitute(text, '^\s\+', '', '')
       endif
       
+      " Use provided emoji from user_data, or extracted emoji, or default
       if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji') && !empty(entry.user_data.emoji)
         let emoji = entry.user_data.emoji
-      elseif empty(emoji)
+      elseif !empty(text_emoji)
+        let emoji = text_emoji
+      else
         let emoji = entry.type ==# 'E' ? '🔴' : entry.type ==# 'W' ? '🔶' : '🟢'
       endif
       
@@ -987,18 +998,23 @@ function! vim_q_connect#quickfix_annotate()
     if has_key(entry, 'bufnr') && has_key(entry, 'lnum') && has_key(entry, 'text')
       " Only annotate entries for buffers that are open in windows
       if index(window_buffers, entry.bufnr) >= 0
-        " Extract emoji from text and clean the text
+        " Handle emoji: always extract and consume from text
         let text = entry.text
-        let emoji = s:ExtractEmoji(text)
-        if !empty(emoji)
-          let text = strcharpart(text, strchars(emoji))
+        let emoji = ''
+        
+        " Always extract and consume emoji from text
+        let text_emoji = s:ExtractEmoji(text)
+        if !empty(text_emoji)
+          let text = strcharpart(text, strchars(text_emoji))
           let text = substitute(text, '^\s\+', '', '')
         endif
         
-        " Use emoji from user_data if available, otherwise use extracted or type-based emoji
+        " Use emoji from user_data, or extracted emoji, or type-based default
         if has_key(entry, 'user_data') && type(entry.user_data) == v:t_dict && has_key(entry.user_data, 'emoji') && !empty(entry.user_data.emoji)
           let emoji = entry.user_data.emoji
-        elseif empty(emoji)
+        elseif !empty(text_emoji)
+          let emoji = text_emoji
+        else
           let emoji = entry.type ==# 'E' ? '🔴' : entry.type ==# 'W' ? '🔶' : '🟢'
         endif
         

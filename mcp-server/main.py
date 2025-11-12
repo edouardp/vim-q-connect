@@ -429,6 +429,7 @@ def get_socket_path():
     return str(socket_dir / "sock")
 
 def start_socket_server():
+    """Start Unix domain socket server for Vim communication."""
     
     socket_path = get_socket_path()
     
@@ -588,15 +589,18 @@ def add_virtual_text(entries: list[dict]) -> str:
         entries: List of dictionaries, each containing:
             - line (str): Exact text content of the line to search for. Use this line argument in preference to line_number because it's more robust - annotations stay correct even if line numbers shift due to edits.
             - line_number (int): Alternative to line. 1-indexed line number to add virtual text above. Don't use the line_number argument unless the line is absolutely known, e.g. from an immediately preceeding get_editor_context tool call.
-            - text (str): The annotation text to display (supports multi-line with \n). If text starts with emoji, it will be extracted as the display emoji.
+            - text (str): The annotation text to display (supports multi-line with \n). Any emoji characters at the beginning will be extracted and consumed.
             - highlight (str, optional): Vim highlight group (ignored for now - will always uses qtext styling)
-            - emoji (str, optional): Single emoji character for visual emphasis (defaults to Ｑ)
+            - emoji (str, optional): Single emoji character for visual emphasis. If provided, this takes precedence over any emoji extracted from text. Any emoji at the beginning of text will still be consumed. (defaults to Ｑ)
     
     Example:
-        add_virtual_text_batch([
+        add_virtual_text([
             {"line_number": 10, "text": "🔒 SECURITY: Validate input here", "highlight": "WarningMsg"},
-            {"line": "def my_function():", "text": "PERFORMANCE: Consider caching this result\nThis function is called frequently", "emoji": "⚡"}
+            {"line": "def my_function():", "text": "⚡ PERFORMANCE: Consider caching this result\nThis function is called frequently", "emoji": "🎯"}
         ])
+        
+        In the first entry, 🔒 will be extracted from text and used as the display emoji.
+        In the second entry, 🎯 from the emoji field will be used, and ⚡ will be consumed from text.
 
     Use optional emoji sparingly - only when it adds semantic meaning.
 
