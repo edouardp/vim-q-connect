@@ -183,11 +183,15 @@ The `run-mcp.sh` script handles socket path configuration automatically.
 
 ### Vim Settings
 
-The plugin works out of the box with no configuration required. However, you can customize the socket path if needed:
+The plugin works out of the box with no configuration required. However, you can customize various aspects:
 
 ```vim
 " Optional: Override socket path (default: /tmp/vim-q-connect/{hash}/sock)
 let g:vim_q_connect_socket_path = '/custom/path/.vim-q-mcp.sock'
+
+" Optional: Customize annotation display characters
+let g:vim_q_connect_first_line_char = '┤'      " Character after emoji on first line
+let g:vim_q_connect_continuation_char = '│'    " Character for continuation lines
 ```
 
 ### MCP Server Logging

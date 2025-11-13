@@ -4,13 +4,21 @@
 " It tracks cursor position, file changes, and visual selections, sending updates
 " to Q CLI's MCP server over a Unix domain socket.
 
-" Global state variables
-let g:context_active = 0      " Flag to control context tracking
-let g:mcp_channel = v:null    " Vim channel handle for MCP socket connection
-let g:current_filename = ''   " Currently tracked filename
-let g:current_line = 0        " Current cursor line number
-let g:visual_start = 0        " Start line of visual selection (0 = no selection)
-let g:visual_end = 0          " End line of visual selection (0 = no selection)
+" Script-local state variables
+let s:context_active = 0      " Flag to control context tracking
+let s:mcp_channel = v:null    " Vim channel handle for MCP socket connection
+let s:current_filename = ''   " Currently tracked filename
+let s:current_line = 0        " Current cursor line number
+let s:visual_start = 0        " Start line of visual selection (0 = no selection)
+let s:visual_end = 0          " End line of visual selection (0 = no selection)
+
+" User-configurable display characters
+if !exists('g:vim_q_connect_first_line_char')
+  let g:vim_q_connect_first_line_char = '┤'
+endif
+if !exists('g:vim_q_connect_continuation_char')
+  let g:vim_q_connect_continuation_char = '│'
+endif
 
 " Handle incoming MCP messages from Q CLI
 " Currently supports 'goto_line' method for navigation commands
@@ -202,11 +210,11 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
       
       " Format first line with emoji and connector, others with continuation
       if i == 0
-        let formatted_text = ' ' . display_emoji . ' ┤ ' . line_text
+        let formatted_text = ' ' . display_emoji . ' ' . g:vim_q_connect_first_line_char . ' ' . line_text
       else
         " Calculate spacing to align with first line text
         let spacing = strdisplaywidth(' ' . display_emoji . ' ')
-        let formatted_text = repeat(' ', spacing) . '│ ' . line_text
+        let formatted_text = repeat(' ', spacing) . g:vim_q_connect_continuation_char . ' ' . line_text
       endif
       
       " Pad text to window width + 30 chars for full-line background
@@ -264,7 +272,7 @@ endfunction
 
 " Get current quickfix entry
 function! s:DoGetCurrentQuickfix(request_id)
-  if g:mcp_channel == v:null || ch_status(g:mcp_channel) != 'open'
+  if s:mcp_channel == v:null || ch_status(s:mcp_channel) != 'open'
     return
   endif
   
@@ -296,14 +304,14 @@ function! s:DoGetCurrentQuickfix(request_id)
   endif
   
   try
-    call ch_sendraw(g:mcp_channel, json_encode(response) . "\n")
+    call ch_sendraw(s:mcp_channel, json_encode(response) . "\n")
   catch
   endtry
 endfunction
 
 " Get annotations at current cursor position
 function! s:DoGetAnnotations(request_id)
-  if g:mcp_channel == v:null || ch_status(g:mcp_channel) != 'open'
+  if s:mcp_channel == v:null || ch_status(s:mcp_channel) != 'open'
     return
   endif
   
@@ -349,7 +357,7 @@ function! s:DoGetAnnotations(request_id)
   \ }
   
   try
-    call ch_sendraw(g:mcp_channel, json_encode(response) . "\n")
+    call ch_sendraw(s:mcp_channel, json_encode(response) . "\n")
   catch
   endtry
 endfunction
@@ -358,7 +366,7 @@ endfunction
 " Formats context as markdown with filename, line numbers, and code content
 function! PushContextUpdate()
   " Skip if no active connection
-  if g:mcp_channel == v:null || ch_status(g:mcp_channel) != 'open'
+  if s:mcp_channel == v:null || ch_status(s:mcp_channel) != 'open'
     return
   endif
   
@@ -372,16 +380,16 @@ function! PushContextUpdate()
   elseif &buftype != ''
     let context = "The user is in a non-text buffer (" . &buftype . ") - no context available"
     let buffer_type = &buftype
-  elseif g:visual_start > 0 && g:visual_end > 0
+  elseif s:visual_start > 0 && s:visual_end > 0
     " Visual selection active - send selected lines
-    let lines = getline(g:visual_start, g:visual_end)
-    let context = "# " . g:current_filename . "\n\nLines " . g:visual_start . "-" . g:visual_end . ":\n```\n" . join(lines, "\n") . "\n```"
+    let lines = getline(s:visual_start, s:visual_end)
+    let context = "# " . s:current_filename . "\n\nLines " . s:visual_start . "-" . s:visual_end . ":\n```\n" . join(lines, "\n") . "\n```"
     let buffer_type = 'text'
   else
     " Normal mode - send current line with context
-    let line_content = getline(g:current_line)
+    let line_content = getline(s:current_line)
     let total_lines = line('$')
-    let context = "# " . g:current_filename . "\n\nLine " . g:current_line . "/" . total_lines . ":\n```\n" . line_content . "\n```"
+    let context = "# " . s:current_filename . "\n\nLine " . s:current_line . "/" . total_lines . ":\n```\n" . line_content . "\n```"
     let buffer_type = 'text'
   endif
   
@@ -389,10 +397,10 @@ function! PushContextUpdate()
   let update = {
     \ "method": "context_update",
     \ "params": {
-      \ "filename": g:current_filename,
-      \ "line": g:current_line,
-      \ "visual_start": g:visual_start,
-      \ "visual_end": g:visual_end,
+      \ "filename": s:current_filename,
+      \ "line": s:current_line,
+      \ "visual_start": s:visual_start,
+      \ "visual_end": s:visual_end,
       \ "total_lines": line('$'),
       \ "modified": &modified ? 1 : 0,
       \ "encoding": &fileencoding != '' ? &fileencoding : &encoding,
@@ -404,7 +412,7 @@ function! PushContextUpdate()
   
   " Send as raw JSON with newline delimiter (MCP protocol requirement)
   try
-    call ch_sendraw(g:mcp_channel, json_encode(update) . "\n")
+    call ch_sendraw(s:mcp_channel, json_encode(update) . "\n")
   catch
     " Silently ignore send failures (connection may be closed)
   endtry
@@ -421,7 +429,7 @@ endfunction
 " Establish connection to Q CLI MCP server
 " Uses Unix domain socket at path defined by g:vim_q_connect_socket_path
 function! StartMCPServer()
-  if g:mcp_channel != v:null
+  if s:mcp_channel != v:null
     return
   endif
   
@@ -432,20 +440,20 @@ function! StartMCPServer()
   
   try
     " Open nl-mode channel with message callback
-    let g:mcp_channel = ch_open('unix:' . g:vim_q_connect_socket_path, {
+    let s:mcp_channel = ch_open('unix:' . g:vim_q_connect_socket_path, {
       \ 'mode': 'nl',
       \ 'callback': 'HandleMCPMessage',
       \ 'close_cb': 'OnMCPClose'
     \ })
     
-    if ch_status(g:mcp_channel) == 'open'
+    if ch_status(s:mcp_channel) == 'open'
       echo "Q MCP channel connected"
     else
-      let g:mcp_channel = v:null
+      let s:mcp_channel = v:null
       echohl WarningMsg | echo "Warning: Cannot connect to Q CLI MCP server. Make sure Q CLI is running." | echohl None
     endif
   catch
-    let g:mcp_channel = v:null
+    let s:mcp_channel = v:null
     echohl WarningMsg | echo "Warning: Cannot connect to Q CLI MCP server. Make sure Q CLI is running." | echohl None
   endtry
 endfunction
@@ -453,7 +461,7 @@ endfunction
 " Handle MCP channel closure (called by Vim when socket closes)
 function! OnMCPClose(channel)
   echo "MCP channel closed"
-  let g:mcp_channel = v:null
+  let s:mcp_channel = v:null
   
   " Restore autoread settings if connection was broken unexpectedly
   if exists('g:vim_q_connect_saved_autoread')
@@ -474,11 +482,11 @@ endfunction
 " Public API: Start context tracking and MCP connection
 " Sets up autocmds to monitor cursor movement, text changes, and mode changes
 function! vim_q_connect#start_tracking()
-  let g:context_active = 1
+  let s:context_active = 1
   call StartMCPServer()
   
   " Only proceed if connection successful
-  if g:mcp_channel != v:null && ch_status(g:mcp_channel) == 'open'
+  if s:mcp_channel != v:null && ch_status(s:mcp_channel) == 'open'
     " Save current autoread settings
     let g:vim_q_connect_saved_autoread = &autoread
     let g:vim_q_connect_saved_autoread_group = exists('#AutoRead')
@@ -507,17 +515,17 @@ endfunction
 " Public API: Stop context tracking and close MCP connection
 " Sends disconnect message and cleans up resources
 function! vim_q_connect#stop_tracking()
-  if g:mcp_channel != v:null
+  if s:mcp_channel != v:null
     " Notify server of intentional disconnect
     let disconnect_msg = {"method": "disconnect", "params": {}}
     try
-      call ch_sendraw(g:mcp_channel, json_encode(disconnect_msg) . "\n")
+      call ch_sendraw(s:mcp_channel, json_encode(disconnect_msg) . "\n")
     catch
     endtry
-    call ch_close(g:mcp_channel)
-    let g:mcp_channel = v:null
+    call ch_close(s:mcp_channel)
+    let s:mcp_channel = v:null
   endif
-  let g:context_active = 0
+  let s:context_active = 0
   
   " Restore autoread settings if they were saved
   if exists('g:vim_q_connect_saved_autoread')
@@ -546,28 +554,28 @@ endfunction
 " Called by autocmds on cursor movement, text changes, etc.
 function! WriteContext()
   " Skip if tracking disabled
-  if !g:context_active
+  if !s:context_active
     return
   endif
   
   " Update current state
-  let g:current_filename = expand('%:.')
-  let g:current_line = line('.')
+  let s:current_filename = expand('%:.')
+  let s:current_line = line('.')
   
   " Detect and track visual selection bounds
   if mode() =~# '[vV\<C-v>]'
-    let g:visual_start = line('v')
-    let g:visual_end = line('.')
+    let s:visual_start = line('v')
+    let s:visual_end = line('.')
     " Ensure start <= end for consistent ordering
-    if g:visual_start > g:visual_end
-      let temp = g:visual_start
-      let g:visual_start = g:visual_end
-      let g:visual_end = temp
+    if s:visual_start > s:visual_end
+      let temp = s:visual_start
+      let s:visual_start = s:visual_end
+      let s:visual_end = temp
     endif
   else
     " Clear selection state when not in visual mode
-    let g:visual_start = 0
-    let g:visual_end = 0
+    let s:visual_start = 0
+    let s:visual_end = 0
   endif
   
   call PushContextUpdate()

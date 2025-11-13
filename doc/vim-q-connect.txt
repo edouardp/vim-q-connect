@@ -35,13 +35,32 @@ COMMANDS					*vim-q-connect-commands*
 		Manually annotate quickfix entries as virtual text.
 		Usually called automatically when navigating quickfix entries.
 
+:QQuickfixClear					*:QQuickfixClear*
+		Clear quickfix list and all associated annotations.
+		Removes all quickfix entries and closes quickfix window.
+
 CONFIGURATION					*vim-q-connect-configuration*
 
 g:vim_q_connect_socket_path			*g:vim_q_connect_socket_path*
 		Custom socket path for MCP communication.
-		Default: getcwd() + '/.vim-q-mcp.sock'
+		Default: /tmp/vim-q-connect/{hash}/sock where {hash} is SHA256
+		of current working directory.
 >
 		let g:vim_q_connect_socket_path = '/tmp/.vim-q-mcp.sock'
+<
+
+g:vim_q_connect_first_line_char			*g:vim_q_connect_first_line_char*
+		Character displayed after emoji on first line of annotations.
+		Default: '┤' (U+2524 Box Drawings Light Vertical And Left)
+>
+		let g:vim_q_connect_first_line_char = '>'
+<
+
+g:vim_q_connect_continuation_char		*g:vim_q_connect_continuation_char*
+		Character displayed for continuation lines of multi-line annotations.
+		Default: '│' (U+2502 Box Drawings Light Vertical)
+>
+		let g:vim_q_connect_continuation_char = '|'
 <
 
 HIGHLIGHT GROUPS				*vim-q-connect-highlights*
@@ -262,10 +281,12 @@ Basic Code Review Workflow:
 	Q: [Fixes the current quickfix issue]
 <
 
-Custom Socket Path:
+Custom Socket Path and Display Characters:
 >
 	" In .vimrc
 	let g:vim_q_connect_socket_path = '/tmp/my-vim-q.sock'
+	let g:vim_q_connect_first_line_char = '▶'
+	let g:vim_q_connect_continuation_char = '▎'
 	
 	" In Q CLI MCP config
 	"env": {"SOCKET_DIR": "/tmp"}
@@ -275,6 +296,7 @@ Manual Annotation Management:
 >
 	:QVirtualTextClear		" Clear all annotations
 	:QQuickfixAnnotate		" Re-annotate quickfix entries
+	:QQuickfixClear			" Clear quickfix list and annotations
 <
 
 vim:tw=78:ts=8:ft=help:norl:

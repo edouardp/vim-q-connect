@@ -140,7 +140,13 @@ Steps:
 1. Analyse the code. If understanding it properly requires examining other code, then find and understand that code too.
 2. Use add_virtual_text to add comprehensive annotations explaining the code
 
-Annotation Guidelines:
+"""
+        
+        # Only add the instruction if we have context from vim_state
+        if vim_state.is_connected():
+            prompt += "IMPORTANT: Do not call get_editor_context - the context provided above is current and up-to-date.\n\n"
+        
+        prompt += """Annotation Guidelines:
 - Start with an OVERVIEW annotation using ℹ️ emoji for cases where there is a
   function/method/class etc, or a section being explained
 - Add detailed annotations using 💬 emoji for each significant line or block
