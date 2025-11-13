@@ -267,7 +267,7 @@ function! s:DoClearQuickfix()
   " TODO: Only remove annotations that were added for quickfix entries, not all annotations
   call prop_remove({'type': 'q_virtual_text', 'all': 1})
   call setqflist([])
-  cclose
+  silent! cclose
 endfunction
 
 " Get current quickfix entry
