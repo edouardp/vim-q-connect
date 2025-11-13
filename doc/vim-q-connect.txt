@@ -39,6 +39,14 @@ COMMANDS					*vim-q-connect-commands*
 		Clear quickfix list and all associated annotations.
 		Removes all quickfix entries and closes quickfix window.
 
+:QQuickfixAutoAnnotate[!]			*:QQuickfixAutoAnnotate*
+		Enable or disable auto-annotation mode for quickfix entries.
+		When enabled, annotations appear automatically when navigating
+		between files that have quickfix entries.
+		
+		:QQuickfixAutoAnnotate		" Enable auto-annotation
+		:QQuickfixAutoAnnotate!		" Disable auto-annotation
+
 CONFIGURATION					*vim-q-connect-configuration*
 
 g:vim_q_connect_socket_path			*g:vim_q_connect_socket_path*
@@ -296,6 +304,9 @@ Manual Annotation Management:
 >
 	:QVirtualTextClear		" Clear all annotations
 	:QQuickfixAnnotate		" Re-annotate quickfix entries
+	:QQuickfixClear			" Clear quickfix list and annotations
+	:QQuickfixAutoAnnotate		" Enable auto-annotation mode
+	:QQuickfixAutoAnnotate!		" Disable auto-annotation mode
 	:QQuickfixClear			" Clear quickfix list and annotations
 <
 

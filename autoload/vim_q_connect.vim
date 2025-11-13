@@ -807,12 +807,35 @@ function! s:FindAllLinesByTextInFile(line_text, filename)
   return matches
 endfunction
 
+" Auto-annotation state
+let s:auto_annotate_enabled = 0
+
 " Set up autocmd for quickfix annotations after first quickfix list is created
 function! s:SetupQuickfixAutocmd()
+  let s:auto_annotate_enabled = 1
   augroup QQuickfixAnnotate
     autocmd!
     autocmd BufEnter * call s:AnnotateCurrentBuffer()
   augroup END
+endfunction
+
+" Manually enable/disable auto-annotation mode
+function! s:SetAutoAnnotate(enable)
+  let s:auto_annotate_enabled = a:enable
+  if a:enable
+    augroup QQuickfixAnnotate
+      autocmd!
+      autocmd BufEnter * call s:AnnotateCurrentBuffer()
+    augroup END
+    " Annotate current buffer immediately if quickfix exists
+    if !empty(getqflist())
+      call s:AnnotateCurrentBuffer()
+    endif
+  else
+    augroup QQuickfixAnnotate
+      autocmd!
+    augroup END
+  endif
 endfunction
 
 " Find line number by searching for text in a specific file
@@ -917,7 +940,7 @@ endfunction
 
 " Annotate quickfix entries for current buffer only
 function! s:AnnotateCurrentBuffer()
-  if empty(getqflist()) || &buftype != ''
+  if !s:auto_annotate_enabled || empty(getqflist()) || &buftype != ''
     return
   endif
   
@@ -1048,4 +1071,14 @@ function! vim_q_connect#quickfix_annotate()
   endfor
   
   echo "Annotated " . annotated . " quickfix entries in open buffers"
+endfunction
+
+" Public API: Enable/disable auto-annotation mode
+function! vim_q_connect#quickfix_auto_annotate(enable)
+  call s:SetAutoAnnotate(a:enable)
+  if a:enable
+    echo "Auto-annotation enabled for quickfix entries"
+  else
+    echo "Auto-annotation disabled"
+  endif
 endfunction

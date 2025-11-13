@@ -22,3 +22,4 @@ command! -bang QConnect if <bang>0 | call vim_q_connect#stop_tracking() | else |
 command! QVirtualTextClear call vim_q_connect#clear_virtual_text()
 command! QQuickfixAnnotate call vim_q_connect#quickfix_annotate()
 command! QQuickfixClear call vim_q_connect#clear_quickfix()
+command! -bang QQuickfixAutoAnnotate call vim_q_connect#quickfix_auto_annotate(<bang>0 ? 0 : 1)

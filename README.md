@@ -239,6 +239,8 @@ This disconnects from the MCP server and stops sending context updates.
 | `:QConnect!` | Disconnect and stop context tracking |
 | `:QVirtualTextClear` | Clear all inline annotations from current buffer |
 | `:QQuickfixAnnotate` | Manually annotate quickfix entries (usually automatic) |
+| `:QQuickfixAutoAnnotate` | Enable auto-annotation mode for quickfix entries |
+| `:QQuickfixAutoAnnotate!` | Disable auto-annotation mode |
 
 ### Available Prompts
 
