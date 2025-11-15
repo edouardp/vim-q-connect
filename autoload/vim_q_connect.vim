@@ -163,7 +163,7 @@ function! s:InitPropTypes()
   for color in highlight_colors
     let prop_name = 'q_highlight_virtual_' . color
     let hl_name = 'QHighlightVirtual' . substitute(color, '^.', '\U&', '')
-    if empty(prop_type_get(prop_name))
+    if empty(prop_type_get(prop_name)) && hlexists(hl_name)
       call prop_type_add(prop_name, {'highlight': hl_name})
     endif
   endfor
