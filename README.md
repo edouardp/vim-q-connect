@@ -192,6 +192,10 @@ let g:vim_q_connect_socket_path = '/custom/path/.vim-q-mcp.sock'
 " Optional: Customize annotation display characters
 let g:vim_q_connect_first_line_char = '┤'      " Character after emoji on first line
 let g:vim_q_connect_continuation_char = '│'    " Character for continuation lines
+
+" Or:
+let g:vim_q_connect_first_line_char = '●'      " Character after emoji on first line
+let g:vim_q_connect_continuation_char = '┊'    " Character for continuation lines
 ```
 
 ### MCP Server Logging

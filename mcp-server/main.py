@@ -246,20 +246,51 @@ Make sure the fix:
 - Doesn't introduce new issues
 - Is minimal and focused"""
     
-    return f"""Please fix issues in {target}.
+    try:
+        prompt = ""
+        
+        if vim_state.is_connected():
+            context = vim_state.get_context()
+            prompt += f"Current context (from get_editor_context tool, only call the tool if you require additional context):\n"
+            prompt += f"File: {context['filename']}\n"
+            prompt += f"Line: {context['line']}\n"
+            
+            if context.get('visual_start', 0) > 0:
+                prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n\n"
+            
+        prompt += f"Please fix the code."
+        if target is not None:
+            prompt += f" The user has specifically asked: {target}"
+        elif vim_state.is_connected():
+            prompt += " Use the context above to determine what should be fixed. If there is a current selection, that is the most important thing."
 
-Use get_editor_context if you need to see the current code context.
+        prompt += """
 
 Steps:
-1. Identify the issues that need fixing in {target}
+1. Identify the issues that need fixing
 2. Apply appropriate fixes to resolve each issue
 3. Explain what you changed and why
 
-Make sure each fix:
+"""
+        
+        if vim_state.is_connected():
+            prompt += "IMPORTANT: Do not call get_editor_context - the context provided above is current and up-to-date.\n\n"
+        
+        prompt += """Make sure each fix:
 - Addresses the root cause, not just the symptom
 - Follows best practices and coding standards
 - Doesn't introduce new issues
 - Is minimal and focused"""
+
+        return prompt
+        
+    except Exception as e:
+        import traceback
+        error_details = f"ERROR in fix prompt:\n"
+        error_details += f"Exception type: {type(e).__name__}\n"
+        error_details += f"Exception message: {str(e)}\n"
+        error_details += f"Traceback:\n{traceback.format_exc()}\n"
+        return error_details
 
 @mcp.prompt()
 def doc(target: str = None):
