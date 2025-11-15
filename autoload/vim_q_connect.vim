@@ -892,7 +892,10 @@ endfunction
 function! s:ClearHighlightVirtualText()
   let highlight_colors = ['yellow', 'orange', 'pink', 'green', 'blue', 'purple']
   for color in highlight_colors
-    call prop_remove({'type': 'q_highlight_virtual_' . color, 'all': 1})
+    let prop_name = 'q_highlight_virtual_' . color
+    if !empty(prop_type_get(prop_name))
+      call prop_remove({'type': prop_name, 'all': 1})
+    endif
   endfor
 endfunction
 
