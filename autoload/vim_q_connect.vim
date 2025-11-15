@@ -158,15 +158,8 @@ function! s:InitPropTypes()
     call prop_type_add('q_highlight_virtual', {'highlight': 'qtext'})
   endif
   
-  " Create property types for each virtual text color
-  let highlight_colors = ['yellow', 'orange', 'pink', 'green', 'blue', 'purple']
-  for color in highlight_colors
-    let prop_name = 'q_highlight_virtual_' . color
-    let hl_name = 'QHighlightVirtual' . substitute(color, '^.', '\U&', '')
-    if empty(prop_type_get(prop_name)) && hlexists(hl_name)
-      call prop_type_add(prop_name, {'highlight': hl_name})
-    endif
-  endfor
+  " Don't create color-specific property types here - they'll be created on-demand
+  " in ShowHighlightVirtualText with the correct highlight groups
   
   " Define highlight groups and initialize highlight property types
   let highlight_colors = ['yellow', 'orange', 'pink', 'green', 'blue', 'purple']
