@@ -854,6 +854,94 @@ def clear_annotations(filename: str = "") -> str:
         logger.error(f"Error sending clear annotations command: {e}")
         return f"Error sending clear annotations command: {e}"
 
+@mcp.tool()
+def highlight_text(start_line: int, end_line: int = None, start_col: int = 1, end_col: int = None, color: str = "yellow", virtual_text: str = "") -> str:
+    """Highlight text with background color and optional virtual text on cursor hover.
+    
+    Creates a highlighted region with bold text and background color. When the cursor
+    is positioned within the highlighted text, optional virtual text appears above
+    the first line of the highlight.
+    
+    Args:
+        start_line (int): Starting line number (1-indexed)
+        end_line (int, optional): Ending line number. If not provided, highlights single line
+        start_col (int): Starting column (1-indexed, default: 1)
+        end_col (int, optional): Ending column. If not provided, highlights to end of line
+        color (str): Highlight color - yellow, orange, pink, green, blue, purple (default: yellow)
+        virtual_text (str, optional): Text to show above highlight when cursor is on it
+    
+    Returns:
+        Status message indicating success or failure
+    """
+    
+    if not vim_state.is_connected():
+        return "Vim not connected to MCP socket"
+    
+    # Validate color
+    valid_colors = ['yellow', 'orange', 'pink', 'green', 'blue', 'purple']
+    if color not in valid_colors:
+        return f"Invalid color '{color}'. Valid colors: {', '.join(valid_colors)}"
+    
+    # Set defaults
+    if end_line is None:
+        end_line = start_line
+    if end_col is None:
+        end_col = -1  # -1 means end of line
+    
+    try:
+        vim_state.request_queue.put(('highlight_text', {
+            "method": "highlight_text",
+            "params": {
+                "start_line": start_line,
+                "end_line": end_line,
+                "start_col": start_col,
+                "end_col": end_col,
+                "color": color,
+                "virtual_text": virtual_text
+            }
+        }))
+        
+        if start_line == end_line:
+            location = f"line {start_line}"
+        else:
+            location = f"lines {start_line}-{end_line}"
+        
+        hover_text = f" with hover text" if virtual_text else ""
+        return f"Highlighted {location} in {color}{hover_text}"
+    except Exception as e:
+        logger.error(f"Error sending highlight command: {e}")
+        return f"Error sending highlight command: {e}"
+
+@mcp.tool()
+def clear_highlights(filename: str = "") -> str:
+    """Clear all text highlights from a specific file or current buffer in Vim.
+    
+    Removes all background highlights that were previously added using highlight_text.
+    This does not affect virtual text annotations added via add_virtual_text.
+    
+    Args:
+        filename (str, optional): File path to clear highlights from. 
+                                 If empty, clears from current buffer.
+    
+    Returns:
+        Status message indicating success or failure
+    """
+    
+    if not vim_state.is_connected():
+        return "Vim not connected to MCP socket"
+    
+    try:
+        vim_state.request_queue.put(('clear_highlights', {
+            "method": "clear_highlights",
+            "params": {"filename": filename}
+        }))
+        
+        target = f"from {filename}" if filename else "from current buffer"
+        return f"Cleared all highlights {target}"
+    except Exception as e:
+        logger.error(f"Error sending clear highlights command: {e}")
+        return f"Error sending clear highlights command: {e}"
+
 def cleanup_and_exit():
     """Clean up resources and exit gracefully"""
     logger.info("Shutting down MCP server...")
