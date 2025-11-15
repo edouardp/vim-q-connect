@@ -12,6 +12,7 @@ let s:current_line = 0        " Current cursor line number
 let s:visual_start = 0        " Start line of visual selection (0 = no selection)
 let s:visual_end = 0          " End line of visual selection (0 = no selection)
 let s:highlight_virtual_text = {}  " Map of prop_id -> virtual_text for highlights
+let s:highlight_colors = {}        " Map of prop_id -> color for highlights
 
 " User-configurable display characters
 if !exists('g:vim_q_connect_first_line_char')
@@ -376,9 +377,10 @@ function! s:DoHighlightText(params)
     endif
     let s:highlight_start_lines[prop_id] = start_line
     
-    " Store virtual text in script-local dict if provided
+    " Store virtual text and color in script-local dicts if provided
     if !empty(virtual_text)
       let s:highlight_virtual_text[prop_id] = virtual_text
+      let s:highlight_colors[prop_id] = color
     endif
     
   catch
@@ -396,6 +398,7 @@ function! s:DoClearHighlights(filename)
     endfor
     " Clear all virtual text entries for this buffer
     let s:highlight_virtual_text = {}
+    let s:highlight_colors = {}
     let s:highlight_start_lines = {}
   else
     " Clear from specific file
@@ -803,6 +806,7 @@ function! s:CheckCursorInHighlight()
         " Check if this highlight has virtual text in our dict
         if has_key(s:highlight_virtual_text, prop.id)
           let virtual_text = s:highlight_virtual_text[prop.id]
+          let highlight_color = get(s:highlight_colors, prop.id, 'yellow')
           echom "Found virtual_text: " . virtual_text
           if !empty(virtual_text)
             " Only show virtual text if we haven't already shown it for this prop ID
@@ -811,7 +815,7 @@ function! s:CheckCursorInHighlight()
               let actual_start_line = get(s:highlight_start_lines, prop.id, prop_start_line)
               echom "Using start line: " . actual_start_line
               " Add virtual text above the first line of the highlight
-              call s:ShowHighlightVirtualText(actual_start_line, virtual_text)
+              call s:ShowHighlightVirtualText(actual_start_line, virtual_text, highlight_color)
               let s:current_virtual_text_prop_id = prop.id
             endif
           endif
@@ -835,8 +839,8 @@ function! s:CheckCursorInHighlight()
 endfunction
 
 " Show virtual text for highlighted region
-function! s:ShowHighlightVirtualText(line_num, text)
-  echom "ShowHighlightVirtualText called: line=" . a:line_num . " text=" . a:text
+function! s:ShowHighlightVirtualText(line_num, text, color)
+  echom "ShowHighlightVirtualText called: line=" . a:line_num . " text=" . a:text . " color=" . a:color
   " Check if virtual text already exists at this line
   let all_props = prop_list(a:line_num)
   let existing_virtual = filter(copy(all_props), 'v:val.type == "q_highlight_virtual"')
@@ -847,9 +851,10 @@ function! s:ShowHighlightVirtualText(line_num, text)
   endif
   
   echom "Adding virtual text..."
-  " Format and add virtual text using same style as regular virtual text
+  " Format and add virtual text using color-matched highlight group
   let lines = split(a:text, '\n', 1)
   let win_width = winwidth(0)
+  let hl_group = 'QHighlightVirtual' . substitute(a:color, '^.', '\U&', '')
   
   for i in range(len(lines))
     let line_text = lines[i]
@@ -863,11 +868,12 @@ function! s:ShowHighlightVirtualText(line_num, text)
     
     let padded_text = formatted_text . repeat(' ', win_width + 30 - strwidth(formatted_text))
     
-    echom "Calling prop_add with text: " . padded_text
+    echom "Calling prop_add with text: " . padded_text . " hl_group: " . hl_group
     call prop_add(a:line_num, 0, {
       \ 'type': 'q_highlight_virtual',
       \ 'text': padded_text,
-      \ 'text_align': 'above'
+      \ 'text_align': 'above',
+      \ 'highlight': hl_group
     \ })
   endfor
   echom "Virtual text added successfully"

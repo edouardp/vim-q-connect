@@ -17,6 +17,14 @@ highlight QHighlightGreen ctermbg=green guibg=#90ee90 cterm=bold gui=bold
 highlight QHighlightBlue ctermbg=lightblue guibg=#add8e6 cterm=bold gui=bold
 highlight QHighlightPurple ctermbg=magenta guibg=#dda0dd cterm=bold gui=bold
 
+" Define virtual text highlight groups (darker shades)
+highlight QHighlightVirtualYellow ctermbg=yellow ctermfg=black guibg=#e6e600 guifg=black cterm=bold gui=bold
+highlight QHighlightVirtualOrange ctermbg=208 ctermfg=black guibg=#e67e00 guifg=black cterm=bold gui=bold
+highlight QHighlightVirtualPink ctermbg=213 ctermfg=black guibg=#ff1493 guifg=black cterm=bold gui=bold
+highlight QHighlightVirtualGreen ctermbg=green ctermfg=black guibg=#7cb342 guifg=black cterm=bold gui=bold
+highlight QHighlightVirtualBlue ctermbg=lightblue ctermfg=black guibg=#4a90e2 guifg=black cterm=bold gui=bold
+highlight QHighlightVirtualPurple ctermbg=magenta ctermfg=black guibg=#b366cc guifg=black cterm=bold gui=bold
+
 " Socket path will be determined at connection time if not set
 
 " Auto-annotate quickfix entries when opening files (disabled due to property type issues)
