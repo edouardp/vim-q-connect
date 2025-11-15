@@ -158,6 +158,16 @@ function! s:InitPropTypes()
     call prop_type_add('q_highlight_virtual', {'highlight': 'qtext'})
   endif
   
+  " Create property types for each virtual text color
+  let highlight_colors = ['yellow', 'orange', 'pink', 'green', 'blue', 'purple']
+  for color in highlight_colors
+    let prop_name = 'q_highlight_virtual_' . color
+    let hl_name = 'QHighlightVirtual' . substitute(color, '^.', '\U&', '')
+    if empty(prop_type_get(prop_name))
+      call prop_type_add(prop_name, {'highlight': hl_name})
+    endif
+  endfor
+  
   " Define highlight groups and initialize highlight property types
   let highlight_colors = ['yellow', 'orange', 'pink', 'green', 'blue', 'purple']
   for color in highlight_colors
@@ -854,7 +864,7 @@ function! s:ShowHighlightVirtualText(line_num, text, color)
   " Format and add virtual text using color-matched highlight group
   let lines = split(a:text, '\n', 1)
   let win_width = winwidth(0)
-  let hl_group = 'QHighlightVirtual' . substitute(a:color, '^.', '\U&', '')
+  let prop_type = 'q_highlight_virtual_' . a:color
   
   for i in range(len(lines))
     let line_text = lines[i]
@@ -868,12 +878,11 @@ function! s:ShowHighlightVirtualText(line_num, text, color)
     
     let padded_text = formatted_text . repeat(' ', win_width + 30 - strwidth(formatted_text))
     
-    echom "Calling prop_add with text: " . padded_text . " hl_group: " . hl_group
+    echom "Calling prop_add with text: " . padded_text . " prop_type: " . prop_type
     call prop_add(a:line_num, 0, {
-      \ 'type': 'q_highlight_virtual',
+      \ 'type': prop_type,
       \ 'text': padded_text,
-      \ 'text_align': 'above',
-      \ 'highlight': hl_group
+      \ 'text_align': 'above'
     \ })
   endfor
   echom "Virtual text added successfully"
@@ -881,7 +890,10 @@ endfunction
 
 " Clear highlight virtual text
 function! s:ClearHighlightVirtualText()
-  call prop_remove({'type': 'q_highlight_virtual', 'all': 1})
+  let highlight_colors = ['yellow', 'orange', 'pink', 'green', 'blue', 'purple']
+  for color in highlight_colors
+    call prop_remove({'type': 'q_highlight_virtual_' . color, 'all': 1})
+  endfor
 endfunction
 
 " Add multiple virtual text entries efficiently
