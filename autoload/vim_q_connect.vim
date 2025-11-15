@@ -868,23 +868,32 @@ function! s:ShowHighlightVirtualText(line_num, text, color)
   
   " Ensure property type exists with correct highlight
   let hl_name = 'QHighlightVirtual' . substitute(a:color, '^.', '\U&', '')
-  if empty(prop_type_get(prop_type))
+  let prop_exists = !empty(prop_type_get(prop_type))
+  
+  if !prop_exists
     " Property type doesn't exist, create it
     if hlexists(hl_name)
       call prop_type_add(prop_type, {'highlight': hl_name})
       echom "Created prop_type " . prop_type . " with highlight " . hl_name
     else
       call prop_type_add(prop_type, {'highlight': 'qtext'})
-      echom "Created prop_type " . prop_type . " with fallback highlight qtext"
+      echom "Created prop_type " . prop_type . " with fallback highlight qtext (hl_name=" . hl_name . " hlexists=" . hlexists(hl_name) . ")"
     endif
   else
     " Property type exists, check if it has the right highlight
     let prop_info = prop_type_get(prop_type)
-    if has_key(prop_info, 'highlight') && prop_info.highlight != hl_name && hlexists(hl_name)
-      " Wrong highlight, recreate it
-      call prop_type_delete(prop_type)
-      call prop_type_add(prop_type, {'highlight': hl_name})
-      echom "Recreated prop_type " . prop_type . " with correct highlight " . hl_name
+    echom "Existing prop_type " . prop_type . " info: " . string(prop_info)
+    if hlexists(hl_name)
+      if !has_key(prop_info, 'highlight') || prop_info.highlight != hl_name
+        " Wrong or missing highlight, need to recreate
+        " First clear any existing virtual text using this type
+        call s:ClearHighlightVirtualText()
+        call prop_type_delete(prop_type)
+        call prop_type_add(prop_type, {'highlight': hl_name})
+        echom "Recreated prop_type " . prop_type . " with correct highlight " . hl_name
+      else
+        echom "prop_type " . prop_type . " already has correct highlight " . hl_name
+      endif
     endif
   endif
   
