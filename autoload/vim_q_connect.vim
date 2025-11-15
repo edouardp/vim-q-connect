@@ -866,13 +866,25 @@ function! s:ShowHighlightVirtualText(line_num, text, color)
   let win_width = winwidth(0)
   let prop_type = 'q_highlight_virtual_' . a:color
   
-  " Ensure property type exists
+  " Ensure property type exists with correct highlight
+  let hl_name = 'QHighlightVirtual' . substitute(a:color, '^.', '\U&', '')
   if empty(prop_type_get(prop_type))
-    let hl_name = 'QHighlightVirtual' . substitute(a:color, '^.', '\U&', '')
+    " Property type doesn't exist, create it
     if hlexists(hl_name)
       call prop_type_add(prop_type, {'highlight': hl_name})
+      echom "Created prop_type " . prop_type . " with highlight " . hl_name
     else
       call prop_type_add(prop_type, {'highlight': 'qtext'})
+      echom "Created prop_type " . prop_type . " with fallback highlight qtext"
+    endif
+  else
+    " Property type exists, check if it has the right highlight
+    let prop_info = prop_type_get(prop_type)
+    if has_key(prop_info, 'highlight') && prop_info.highlight != hl_name && hlexists(hl_name)
+      " Wrong highlight, recreate it
+      call prop_type_delete(prop_type)
+      call prop_type_add(prop_type, {'highlight': hl_name})
+      echom "Recreated prop_type " . prop_type . " with correct highlight " . hl_name
     endif
   endif
   
