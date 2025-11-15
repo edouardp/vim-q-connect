@@ -853,7 +853,7 @@ function! s:ShowHighlightVirtualText(line_num, text, color)
   echom "ShowHighlightVirtualText called: line=" . a:line_num . " text=" . a:text . " color=" . a:color
   " Check if virtual text already exists at this line
   let all_props = prop_list(a:line_num)
-  let existing_virtual = filter(copy(all_props), 'v:val.type == "q_highlight_virtual"')
+  let existing_virtual = filter(copy(all_props), 'v:val.type =~ "q_highlight_virtual"')
   echom "Existing virtual props: " . string(existing_virtual)
   if !empty(existing_virtual)
     echom "Already showing virtual text, returning"
@@ -865,6 +865,16 @@ function! s:ShowHighlightVirtualText(line_num, text, color)
   let lines = split(a:text, '\n', 1)
   let win_width = winwidth(0)
   let prop_type = 'q_highlight_virtual_' . a:color
+  
+  " Ensure property type exists
+  if empty(prop_type_get(prop_type))
+    let hl_name = 'QHighlightVirtual' . substitute(a:color, '^.', '\U&', '')
+    if hlexists(hl_name)
+      call prop_type_add(prop_type, {'highlight': hl_name})
+    else
+      call prop_type_add(prop_type, {'highlight': 'qtext'})
+    endif
+  endif
   
   for i in range(len(lines))
     let line_text = lines[i]
