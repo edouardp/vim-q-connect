@@ -54,11 +54,9 @@ function! HandleMCPMessage(channel, msg)
     call timer_start(0, {-> s:DoAddVirtualText(line_num, text, highlight, emoji)})
   elseif data.method == 'add_virtual_text_batch'
     if !has_key(data, 'params') || !has_key(data.params, 'entries')
-      " echom "vim-q-connect: add_virtual_text_batch missing params or entries"
       return
     endif
     let entries = data.params.entries
-    " echom "vim-q-connect: Processing " . len(entries) . " virtual text entries"
     call timer_start(0, {-> s:DoAddVirtualTextBatch(entries)})
   elseif data.method == 'add_to_quickfix'
     if !has_key(data, 'params') || !has_key(data.params, 'entries')
@@ -217,13 +215,11 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
   try
     " Check if text properties are supported
     if !has('textprop')
-      echom "vim-q-connect: Text properties not supported"
       return
     endif
     
     " Validate line number
     if a:line_num <= 0 || a:line_num > line('$')
-      " echom "vim-q-connect: Invalid line number " . a:line_num . " (file has " . line('$') . " lines)"
       return
     endif
     
@@ -239,7 +235,6 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
     let first_line = split(a:text, '\n', 1)[0]
     for prop in existing_props
       if has_key(prop, 'text') && stridx(prop.text, first_line) >= 0
-        " echom "vim-q-connect: Duplicate virtual text detected at line " . a:line_num . ", skipping"
         return
       endif
     endfor
@@ -251,7 +246,6 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
     let lines = split(a:text, '\n', 1)
     let win_width = winwidth(0)
     
-    " echom "vim-q-connect: Adding virtual text at line " . a:line_num . " with " . len(lines) . " lines"
     
     for i in range(len(lines))
       let line_text = lines[i]
@@ -275,14 +269,11 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
           \ 'text_align': 'above'
         \ })
       catch
-        " echom "vim-q-connect: Error adding prop at line " . a:line_num . ": " . v:exception
         throw v:exception
       endtry
     endfor
     
-    " echom "vim-q-connect: Successfully added virtual text at line " . a:line_num
   catch
-    " echom "vim-q-connect: Error in DoAddVirtualText: " . v:exception . " at " . v:throwpoint
   endtry
 endfunction
 
@@ -748,7 +739,6 @@ function! s:CheckCursorInHighlight()
     let s:current_virtual_text_prop_id = -1
   endif
   
-  echom "CheckCursorInHighlight: line=" . current_line . " col=" . current_col
   
   " Check all highlight types
   for color in highlight_colors
@@ -756,11 +746,9 @@ function! s:CheckCursorInHighlight()
     let props = prop_list(current_line, {'type': prop_type})
     
     if !empty(props)
-      echom "Found " . len(props) . " " . color . " props on line " . current_line
     endif
     
     for prop in props
-      echom "Checking prop: " . string(prop)
       
       " Skip if this prop doesn't have an id (e.g., virtual text props)
       if !has_key(prop, 'id')
@@ -777,7 +765,6 @@ function! s:CheckCursorInHighlight()
         let prop_end_line = prop.end_lnum
         let prop_end_col = get(prop, 'end_col', 999999)
         
-        echom "Multi-line: start=" . prop_start_line . ":" . prop_start_col . " end=" . prop_end_line . ":" . prop_end_col
         
         if current_line > prop_start_line && current_line < prop_end_line
           let in_range = 1
@@ -790,10 +777,8 @@ function! s:CheckCursorInHighlight()
         " Single line highlight - check for length or end_col
         if has_key(prop, 'length')
           let prop_end_col = prop_start_col + prop.length
-          echom "Single-line with length: start=" . prop_start_col . " length=" . prop.length . " end=" . prop_end_col
         else
           let prop_end_col = get(prop, 'end_col', 999999)
-          echom "Single-line with end_col: start=" . prop_start_col . " end=" . prop_end_col
         endif
         
         if current_line == prop_start_line && current_col >= prop_start_col && current_col < prop_end_col
@@ -801,29 +786,24 @@ function! s:CheckCursorInHighlight()
         endif
       endif
       
-      echom "in_range=" . in_range
       
       if in_range
         let found_highlight = 1
-        echom "Cursor is in range! prop_id=" . prop.id
         " Check if this highlight has virtual text in our dict
         if has_key(s:highlight_virtual_text, prop.id)
           let virtual_text = s:highlight_virtual_text[prop.id]
           let highlight_color = get(s:highlight_colors, prop.id, 'yellow')
-          echom "Found virtual_text: " . virtual_text
           if !empty(virtual_text)
             " Only show virtual text if we haven't already shown it for this prop ID
             if s:current_virtual_text_prop_id != prop.id
               " Get the actual start line for this highlight
               let actual_start_line = get(s:highlight_start_lines, prop.id, prop_start_line)
-              echom "Using start line: " . actual_start_line
               " Add virtual text above the first line of the highlight
               call s:ShowHighlightVirtualText(actual_start_line, virtual_text, highlight_color)
               let s:current_virtual_text_prop_id = prop.id
             endif
           endif
         else
-          echom "No virtual_text for prop_id " . prop.id
         endif
         break
       endif
@@ -843,17 +823,13 @@ endfunction
 
 " Show virtual text for highlighted region
 function! s:ShowHighlightVirtualText(line_num, text, color)
-  echom "ShowHighlightVirtualText called: line=" . a:line_num . " text=" . a:text . " color=" . a:color
   " Check if virtual text already exists at this line
   let all_props = prop_list(a:line_num)
   let existing_virtual = filter(copy(all_props), 'v:val.type =~ "q_highlight_virtual"')
-  echom "Existing virtual props: " . string(existing_virtual)
   if !empty(existing_virtual)
-    echom "Already showing virtual text, returning"
     return
   endif
   
-  echom "Adding virtual text..."
   " Format and add virtual text using color-matched highlight group
   let lines = split(a:text, '\n', 1)
   let win_width = winwidth(0)
@@ -867,15 +843,12 @@ function! s:ShowHighlightVirtualText(line_num, text, color)
     " Property type doesn't exist, create it
     if hlexists(hl_name)
       call prop_type_add(prop_type, {'highlight': hl_name})
-      echom "Created prop_type " . prop_type . " with highlight " . hl_name
     else
       call prop_type_add(prop_type, {'highlight': 'qtext'})
-      echom "Created prop_type " . prop_type . " with fallback highlight qtext (hl_name=" . hl_name . " hlexists=" . hlexists(hl_name) . ")"
     endif
   else
     " Property type exists, check if it has the right highlight
     let prop_info = prop_type_get(prop_type)
-    echom "Existing prop_type " . prop_type . " info: " . string(prop_info)
     if hlexists(hl_name)
       if !has_key(prop_info, 'highlight') || prop_info.highlight != hl_name
         " Wrong or missing highlight, need to recreate
@@ -883,9 +856,7 @@ function! s:ShowHighlightVirtualText(line_num, text, color)
         call s:ClearHighlightVirtualText()
         call prop_type_delete(prop_type)
         call prop_type_add(prop_type, {'highlight': hl_name})
-        echom "Recreated prop_type " . prop_type . " with correct highlight " . hl_name
       else
-        echom "prop_type " . prop_type . " already has correct highlight " . hl_name
       endif
     endif
   endif
@@ -902,14 +873,12 @@ function! s:ShowHighlightVirtualText(line_num, text, color)
     
     let padded_text = formatted_text . repeat(' ', win_width + 30 - strwidth(formatted_text))
     
-    echom "Calling prop_add with text: " . padded_text . " prop_type: " . prop_type
     call prop_add(a:line_num, 0, {
       \ 'type': prop_type,
       \ 'text': padded_text,
       \ 'text_align': 'above'
     \ })
   endfor
-  echom "Virtual text added successfully"
 endfunction
 
 " Clear highlight virtual text
@@ -926,7 +895,6 @@ endfunction
 " Add multiple virtual text entries efficiently
 function! s:DoAddVirtualTextBatch(entries)
   try
-    " echom "vim-q-connect: DoAddVirtualTextBatch called with " . len(a:entries) . " entries"
     let processed = 0
     let skipped = 0
     
@@ -934,7 +902,6 @@ function! s:DoAddVirtualTextBatch(entries)
       try
         " Validate required field
         if !has_key(entry, 'line') || !has_key(entry, 'text')
-          " echom "vim-q-connect: Skipping entry missing line or text: " . string(entry)
           let skipped += 1
           continue
         endif
@@ -964,7 +931,6 @@ function! s:DoAddVirtualTextBatch(entries)
         if len(line_matches) == 1
           " Single match - use it
           let line_num = line_matches[0]
-          " echom "vim-q-connect: Found single line match at " . line_num . " for: " . entry.line[:50]
         elseif len(line_matches) > 1
           " Multiple matches - use line_number_hint if provided
           if has_key(entry, 'line_number_hint')
@@ -980,19 +946,15 @@ function! s:DoAddVirtualTextBatch(entries)
               endif
             endfor
             let line_num = closest_match
-            " echom "vim-q-connect: Found " . len(line_matches) . " matches, using closest to hint " . hint . ": " . line_num
           else
             " No hint - use first match
             let line_num = line_matches[0]
-            " echom "vim-q-connect: Found " . len(line_matches) . " matches, using first: " . line_num
           endif
         else
           " No matches - use line_number_hint if provided
           if has_key(entry, 'line_number_hint')
             let line_num = entry.line_number_hint
-            " echom "vim-q-connect: No line matches found, using hint: " . line_num
           else
-            " echom "vim-q-connect: No line matches and no hint for: " . entry.line[:50]
             let skipped += 1
             continue  " Skip if no line found and no hint
           endif
@@ -1003,14 +965,11 @@ function! s:DoAddVirtualTextBatch(entries)
         let processed += 1
         
       catch
-        " echom "vim-q-connect: Error processing entry: " . v:exception . " at " . v:throwpoint
         let skipped += 1
       endtry
     endfor
     
-    " echom "vim-q-connect: Batch complete - processed: " . processed . ", skipped: " . skipped
   catch
-    " echom "vim-q-connect: Error in DoAddVirtualTextBatch: " . v:exception . " at " . v:throwpoint
   endtry
 endfunction
 
@@ -1186,7 +1145,6 @@ function! s:FindLineByTextInFile(line_text, filename, ...)
   
   " Read file directly instead of using buffers
   if !filereadable(a:filename)
-    " echom "File not readable: " . a:filename
     return 0
   endif
   
@@ -1325,7 +1283,6 @@ function! s:FindAllLinesByText(line_text)
     let matches = []
     
     if empty(a:line_text)
-      " echom "vim-q-connect: Empty line_text provided to FindAllLinesByText"
       return matches
     endif
     
@@ -1348,14 +1305,11 @@ function! s:FindAllLinesByText(line_text)
     endif
     
     if empty(matches)
-      " echom "vim-q-connect: No matches found for line: " . a:line_text[:50]
     else
-      " echom "vim-q-connect: Found " . len(matches) . " matches for line: " . a:line_text[:50]
     endif
     
     return matches
   catch
-    " echom "vim-q-connect: Error in FindAllLinesByText: " . v:exception . " at " . v:throwpoint
     return []
   endtry
 endfunction
