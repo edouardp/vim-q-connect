@@ -891,6 +891,7 @@ def highlight_text(entries: list[dict]) -> str:
         for entry in entries:
             # Validate required fields
             if 'start_line' not in entry:
+                logger.warning(f"Highlight entry missing start_line: {entry}")
                 continue
             
             start_line = entry['start_line']
@@ -902,6 +903,7 @@ def highlight_text(entries: list[dict]) -> str:
             
             # Validate color
             if color not in valid_colors:
+                logger.warning(f"Invalid highlight color '{color}': {entry}")
                 continue
             
             vim_state.request_queue.put(('highlight_text', {
