@@ -286,6 +286,21 @@ Q: [Adds docstrings, comments, and type hints]
 
 Once connected, Q CLI can access your editor context through several tools:
 
+### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_editor_context` | Retrieve current file, cursor position, selection, and metadata |
+| `goto_line` | Navigate cursor to specific line/file in Vim |
+| `add_virtual_text` | Add inline annotations and virtual text above code lines |
+| `highlight_text` | Add background color highlights with optional hover text |
+| `clear_highlights` | Remove all highlights from buffer or specific file |
+| `add_to_quickfix` | Populate Vim's quickfix list with findings |
+| `get_current_quickfix_entry` | Get the quickfix entry at cursor position |
+| `clear_quickfix` | Clear all quickfix entries |
+| `get_annotations_above_current_position` | Retrieve annotations near cursor |
+| `clear_annotations` | Remove all virtual text annotations |
+
 ### 1. Ask Questions About Your Code
 
 Q automatically knows what code you're looking at:

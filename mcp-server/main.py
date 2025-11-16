@@ -6,7 +6,7 @@ It enables bidirectional communication for editor context sharing and remote con
 
 Key Features:
 - Real-time editor context reception from vim-q-connect plugin
-- Virtual text annotation support with goto_line navigation
+- Virtual text annotation and highlight support with navigation
 - Unix domain socket communication for low-latency IPC
 - Thread-safe message handling and client management
 
@@ -14,6 +14,12 @@ MCP Tools Provided:
 - get_editor_context: Retrieve current Vim editor state and context
 - goto_line: Navigate to specific line/file in Vim editor
 - add_virtual_text: Add annotations and virtual text to editor
+- highlight_text: Add background color highlights with hover text
+- clear_highlights: Remove all highlights from buffer or file
+- add_to_quickfix: Populate Vim's quickfix list with findings
+- clear_quickfix: Clear all quickfix entries
+- get_current_quickfix_entry: Get the quickfix entry at cursor
+- clear_annotations: Remove all virtual text annotations
 
 Usage:
     python main.py [socket_path]
