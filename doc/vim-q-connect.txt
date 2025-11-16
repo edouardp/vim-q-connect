@@ -31,6 +31,10 @@ COMMANDS					*vim-q-connect-commands*
 		Clear all Q Connect virtual text annotations from current buffer.
 		Removes all text properties of type 'q_virtual_text'.
 
+:QHighlightsClear				*:QHighlightsClear*
+		Clear all background highlights from current buffer.
+		Removes all text properties used for highlighting.
+
 :QQuickfixAnnotate				*:QQuickfixAnnotate*
 		Manually annotate quickfix entries as virtual text.
 		Usually called automatically when navigating quickfix entries.
