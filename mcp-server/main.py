@@ -382,6 +382,10 @@ class VimState:
             "line": 0,
             "visual_start": 0,
             "visual_end": 0,
+            "visual_start_col": 0,
+            "visual_end_col": 0,
+            "visual_start_line_len": 0,
+            "visual_end_line_len": 0,
             "total_lines": 0,
             "modified": False,
             "encoding": "",
@@ -435,6 +439,10 @@ def handle_vim_message(message):
                 "line": params.get('line', 0),                             # Current cursor line (1-indexed)
                 "visual_start": params.get('visual_start', 0),             # Selection start line (0 = no selection)
                 "visual_end": params.get('visual_end', 0),                 # Selection end line (0 = no selection)
+                "visual_start_col": params.get('visual_start_col', 0),     # Selection start column (1-indexed, 0 = no selection)
+                "visual_end_col": params.get('visual_end_col', 0),         # Selection end column (1-indexed, 0 = no selection)
+                "visual_start_line_len": params.get('visual_start_line_len', 0),  # Length of start line (0 = no selection)
+                "visual_end_line_len": params.get('visual_end_line_len', 0),      # Length of end line (0 = no selection)
                 "total_lines": params.get('total_lines', 0),               # Total lines in file
                 "modified": params.get('modified', False),                 # True if file has unsaved changes
                 "encoding": params.get('encoding', ''),                    # File encoding (utf-8, latin1, etc.)
@@ -573,14 +581,24 @@ def get_editor_context() -> dict:
         }
     
     context = vim_state.get_context()
+    visual_selection = None
+    if context["visual_start"] > 0:
+        visual_selection = {
+            "start_line": context["visual_start"],
+            "end_line": context["visual_end"]
+        }
+        # Only include column info if selection doesn't span full lines
+        if context["visual_start_col"] > 0 or context["visual_end_col"] > 0:
+            visual_selection["start_col"] = context["visual_start_col"]
+            visual_selection["end_col"] = context["visual_end_col"]
+            visual_selection["start_line_length"] = context["visual_start_line_len"]
+            visual_selection["end_line_length"] = context["visual_end_line_len"]
+    
     return {
         "content": context["context"],
         "filename": context["filename"],
         "current_line": context["line"],
-        "visual_selection": {
-            "start_line": context["visual_start"],
-            "end_line": context["visual_end"]
-        } if context["visual_start"] > 0 else None,
+        "visual_selection": visual_selection,
         "total_lines": context["total_lines"],
         "modified": context["modified"],
         "encoding": context["encoding"],

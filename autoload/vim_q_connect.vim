@@ -11,6 +11,10 @@ let s:current_filename = ''   " Currently tracked filename
 let s:current_line = 0        " Current cursor line number
 let s:visual_start = 0        " Start line of visual selection (0 = no selection)
 let s:visual_end = 0          " End line of visual selection (0 = no selection)
+let s:visual_start_col = 0    " Start column of visual selection (0 = no selection)
+let s:visual_end_col = 0      " End column of visual selection (0 = no selection)
+let s:visual_start_line_len = 0  " Length of start line (0 = no selection)
+let s:visual_end_line_len = 0    " Length of end line (0 = no selection)
 let s:highlight_virtual_text = {}  " Map of prop_id -> virtual_text for highlights
 let s:highlight_colors = {}        " Map of prop_id -> color for highlights
 
@@ -361,10 +365,10 @@ function! s:DoHighlightText(params)
     let prop_options = {'type': prop_type, 'id': prop_id}
     if end_line > start_line
       let prop_options.end_lnum = end_line
-      let prop_options.end_col = end_col
+      let prop_options.end_col = end_col + 1
     elseif end_col > start_col && end_col <= len(getline(start_line)) + 1
-      " Single line partial highlight
-      let prop_options.length = end_col - start_col
+      " Single line partial highlight (inclusive of end column)
+      let prop_options.length = end_col - start_col + 1
     endif
     
     " Add the property
@@ -556,6 +560,10 @@ function! PushContextUpdate()
       \ "line": s:current_line,
       \ "visual_start": s:visual_start,
       \ "visual_end": s:visual_end,
+      \ "visual_start_col": s:visual_start_col,
+      \ "visual_end_col": s:visual_end_col,
+      \ "visual_start_line_len": s:visual_start_line_len,
+      \ "visual_end_line_len": s:visual_end_line_len,
       \ "total_lines": line('$'),
       \ "modified": &modified ? 1 : 0,
       \ "encoding": &fileencoding != '' ? &fileencoding : &encoding,
@@ -721,16 +729,39 @@ function! WriteContext()
   if mode() =~# '[vV\<C-v>]'
     let s:visual_start = line('v')
     let s:visual_end = line('.')
+    let s:visual_start_line_len = col([s:visual_start, '$']) - 1
+    let s:visual_end_line_len = col([s:visual_end, '$']) - 1
+    
+    " For line-wise visual mode (V), set columns to indicate full lines
+    if mode() ==# 'V'
+      let s:visual_start_col = 1
+      let s:visual_end_col = s:visual_end_line_len
+    else
+      " For character-wise (v) and block-wise (^V) modes, use actual cursor positions
+      let s:visual_start_col = col('v')
+      let s:visual_end_col = col('.')
+    endif
+    
     " Ensure start <= end for consistent ordering
-    if s:visual_start > s:visual_end
+    if s:visual_start > s:visual_end || (s:visual_start == s:visual_end && s:visual_start_col > s:visual_end_col)
       let temp = s:visual_start
       let s:visual_start = s:visual_end
       let s:visual_end = temp
+      let temp = s:visual_start_col
+      let s:visual_start_col = s:visual_end_col
+      let s:visual_end_col = temp
+      let temp = s:visual_start_line_len
+      let s:visual_start_line_len = s:visual_end_line_len
+      let s:visual_end_line_len = temp
     endif
   else
     " Clear selection state when not in visual mode
     let s:visual_start = 0
     let s:visual_end = 0
+    let s:visual_start_col = 0
+    let s:visual_end_col = 0
+    let s:visual_start_line_len = 0
+    let s:visual_end_line_len = 0
   endif
   
   call PushContextUpdate()
@@ -815,6 +846,8 @@ function! s:CheckCursorInHighlight()
           if !empty(virtual_text)
             " Only show virtual text if we haven't already shown it for this prop ID
             if s:current_virtual_text_prop_id != prop.id
+              " Clear old virtual text before showing new one
+              call s:ClearHighlightVirtualText()
               " Get the actual start line for this highlight
               let actual_start_line = get(s:highlight_start_lines, prop.id, prop_start_line)
               " Add virtual text above the first line of the highlight
