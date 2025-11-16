@@ -80,7 +80,12 @@ function! HandleMCPMessage(channel, msg)
       return
     endif
     let params = data.params
-    call timer_start(0, {-> s:DoHighlightText(params)})
+    " Check if params is a list (batch) or dict (single)
+    if type(params) == type([])
+      call timer_start(0, {-> s:DoHighlightTextBatch(params)})
+    else
+      call timer_start(0, {-> s:DoHighlightText(params)})
+    endif
   elseif data.method == 'clear_highlights'
     let filename = get(data.params, 'filename', '')
     call timer_start(0, {-> s:DoClearHighlights(filename)})
@@ -377,6 +382,20 @@ function! s:DoHighlightText(params)
       let s:highlight_colors[prop_id] = color
     endif
     
+  catch
+    " Silent error handling
+  endtry
+endfunction
+
+" Highlight multiple text regions
+function! s:DoHighlightTextBatch(entries)
+  try
+    for entry in a:entries
+      if !has_key(entry, 'start_line')
+        continue
+      endif
+      call s:DoHighlightText(entry)
+    endfor
   catch
     " Silent error handling
   endtry
