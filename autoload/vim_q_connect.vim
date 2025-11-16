@@ -205,7 +205,7 @@ function! s:ExtractEmoji(text)
   while idx < strchars(a:text)
     let char = strcharpart(a:text, idx, 1)
     let codepoint = char2nr(char)
-    if (codepoint >= 0x1F300 && codepoint <= 0x1F9FF) || 
+    if (codepoint >= 0x1F300 && codepoint <= 0x1FAFF) || 
      \ (codepoint >= 0x2600 && codepoint <= 0x27BF) ||
      \ (codepoint >= 0x2300 && codepoint <= 0x23FF) ||
      \ (codepoint >= 0x2100 && codepoint <= 0x214F) ||
@@ -217,6 +217,54 @@ function! s:ExtractEmoji(text)
     endif
   endwhile
   return emoji
+endfunction
+
+" Common function to format virtual text lines with emoji
+" Returns: [display_emoji, cleaned_text]
+function! s:ExtractEmojiFromText(text, provided_emoji)
+  let display_emoji = a:provided_emoji
+  let cleaned_text = a:text
+  
+  " If no emoji provided, try to extract from text using existing function
+  if empty(display_emoji)
+    let text_emoji = s:ExtractEmoji(a:text)
+    if !empty(text_emoji)
+      let display_emoji = text_emoji
+      " Remove emoji and following whitespace from text
+      let cleaned_text = strcharpart(a:text, strchars(text_emoji))
+      let cleaned_text = substitute(cleaned_text, '^\s\+', '', '')
+    else
+      " Default to fullwidth Q if no emoji found
+      let display_emoji = 'Ｑ'
+    endif
+  endif
+  
+  return [display_emoji, cleaned_text]
+endfunction
+
+" Format virtual text lines with emoji and connectors
+" Returns: list of formatted lines ready for display
+function! s:FormatVirtualTextLines(text, emoji)
+  let [display_emoji, cleaned_text] = s:ExtractEmojiFromText(a:text, a:emoji)
+  let lines = split(cleaned_text, '\n', 1)
+  let win_width = winwidth(0)
+  let formatted_lines = []
+  
+  for i in range(len(lines))
+    let line_text = lines[i]
+    
+    if i == 0
+      let formatted_text = ' ' . display_emoji . ' ' . g:vim_q_connect_first_line_char . ' ' . line_text
+    else
+      let spacing = strdisplaywidth(' ' . display_emoji . ' ')
+      let formatted_text = repeat(' ', spacing) . g:vim_q_connect_continuation_char . ' ' . line_text
+    endif
+    
+    let padded_text = formatted_text . repeat(' ', win_width + 30 - strwidth(formatted_text))
+    call add(formatted_lines, padded_text)
+  endfor
+  
+  return formatted_lines
 endfunction
 
 " Add virtual text above specified line
@@ -248,29 +296,10 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
       endif
     endfor
     
-    " Use provided emoji or default to fullwidth Q
-    let display_emoji = empty(a:emoji) ? 'Ｑ' : a:emoji
+    " Format virtual text lines using common function
+    let formatted_lines = s:FormatVirtualTextLines(a:text, a:emoji)
     
-    " Split text on newlines for multi-line virtual text
-    let lines = split(a:text, '\n', 1)
-    let win_width = winwidth(0)
-    
-    
-    for i in range(len(lines))
-      let line_text = lines[i]
-      
-      " Format first line with emoji and connector, others with continuation
-      if i == 0
-        let formatted_text = ' ' . display_emoji . ' ' . g:vim_q_connect_first_line_char . ' ' . line_text
-      else
-        " Calculate spacing to align with first line text
-        let spacing = strdisplaywidth(' ' . display_emoji . ' ')
-        let formatted_text = repeat(' ', spacing) . g:vim_q_connect_continuation_char . ' ' . line_text
-      endif
-      
-      " Pad text to window width + 30 chars for full-line background
-      let padded_text = formatted_text . repeat(' ', win_width + 30 - strwidth(formatted_text))
-      
+    for formatted_text in formatted_lines
       try
         call prop_add(a:line_num, 0, {
           \ 'type': l:prop_type,
@@ -913,21 +942,13 @@ function! s:ShowHighlightVirtualText(line_num, text, color)
     endif
   endif
   
-  for i in range(len(lines))
-    let line_text = lines[i]
-    
-    if i == 0
-      let formatted_text = ' 💡 ' . g:vim_q_connect_first_line_char . ' ' . line_text
-    else
-      let spacing = strdisplaywidth(' 💡 ')
-      let formatted_text = repeat(' ', spacing) . g:vim_q_connect_continuation_char . ' ' . line_text
-    endif
-    
-    let padded_text = formatted_text . repeat(' ', win_width + 30 - strwidth(formatted_text))
-    
+  " Format virtual text lines using common function (no emoji provided, will extract from text)
+  let formatted_lines = s:FormatVirtualTextLines(a:text, '')
+  
+  for formatted_text in formatted_lines
     call prop_add(a:line_num, 0, {
       \ 'type': prop_type,
-      \ 'text': padded_text,
+      \ 'text': formatted_text,
       \ 'text_align': 'above'
     \ })
   endfor

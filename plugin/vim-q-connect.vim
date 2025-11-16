@@ -9,21 +9,21 @@ let g:loaded_vim_q_connect = 1
 " Define highlight group for Q text
 highlight qtext ctermbg=237 ctermfg=250 cterm=italic guibg=#2a2a2a guifg=#d0d0d0 gui=italic
 
-" Define highlighter pen colors
-highlight QHighlightYellow ctermbg=yellow ctermfg=black guibg=#ffff00 cterm=bold gui=bold
-highlight QHighlightOrange ctermbg=208 ctermfg=black guibg=#ff8c00 cterm=bold gui=bold
-highlight QHighlightPink ctermbg=213 ctermfg=black guibg=#ff69b4 cterm=bold gui=bold
-highlight QHighlightGreen ctermbg=green ctermfg=black guibg=#90ee90 cterm=bold gui=bold
-highlight QHighlightBlue ctermbg=lightblue ctermfg=black guibg=#add8e6 cterm=bold gui=bold
-highlight QHighlightPurple ctermbg=magenta ctermfg=black guibg=#dda0dd cterm=bold gui=bold
+" Define highlighter pen color s
+highlight QHighlightYellow  ctermbg=227    ctermfg=black  guibg=#ffff00  cterm=bold  gui=bold
+highlight QHighlightOrange  ctermbg=208    ctermfg=black  guibg=#ff8c00  cterm=bold  gui=bold
+highlight QHighlightPink    ctermbg=213    ctermfg=black  guibg=#ff69b4  cterm=bold  gui=bold
+highlight QHighlightGreen   ctermbg=47     ctermfg=black  guibg=#90ee90  cterm=bold  gui=bold
+highlight QHighlightBlue    ctermbg=87     ctermfg=black  guibg=#add8e6  cterm=bold  gui=bold
+highlight QHighlightPurple  ctermbg=165    ctermfg=black  guibg=#dda0dd  cterm=bold  gui=bold
 
 " Define virtual text highlight groups (darker shades)
-highlight QHighlightVirtualYellow ctermbg=3 ctermfg=black guibg=#e6e600 guifg=black gui=bold
-highlight QHighlightVirtualOrange ctermbg=130 ctermfg=black guibg=#e67e00 guifg=black gui=bold
-highlight QHighlightVirtualPink ctermbg=198 ctermfg=black guibg=#ff1493 guifg=black gui=bold
-highlight QHighlightVirtualGreen ctermbg=2 ctermfg=black guibg=#7cb342 guifg=black gui=bold
-highlight QHighlightVirtualBlue ctermbg=4 ctermfg=black guibg=#4a90e2 guifg=black gui=bold
-highlight QHighlightVirtualPurple ctermbg=5 ctermfg=black guibg=#b366cc guifg=black gui=bold
+highlight QHighlightVirtualYellow  ctermbg=214  ctermfg=black  guibg=#e6e600  guifg=black  gui=bold
+highlight QHighlightVirtualOrange  ctermbg=166  ctermfg=black  guibg=#e67e00  guifg=black  gui=bold
+highlight QHighlightVirtualPink    ctermbg=200  ctermfg=black  guibg=#ff1493  guifg=black  gui=bold
+highlight QHighlightVirtualGreen   ctermbg=34   ctermfg=black  guibg=#7cb342  guifg=black  gui=bold
+highlight QHighlightVirtualBlue    ctermbg=74   ctermfg=black  guibg=#4a90e2  guifg=black  gui=bold
+highlight QHighlightVirtualPurple  ctermbg=129  ctermfg=black  guibg=#b366cc  guifg=black  gui=bold
 
 " Socket path will be determined at connection time if not set
 
