@@ -566,7 +566,14 @@ def start_socket_server():
 
 @mcp.tool()
 def get_editor_context() -> dict:
-    """Get the current editor context from Vim via channel. Use this tool whenever the user refers to code they are looking at in their editor, such as: "what is this", "explain this function", "how does this work", "what's wrong with this code", "optimize this", "add tests for this", "refactor this", "this file", "the current file", "this code", "the code I'm looking at", "can you help me with this", "review this", or any reference to current editor content."""
+    """Get the current editor context from Vim via channel. Use this tool
+    whenever the user refers to code they are looking at in their editor, such
+    as: "what is this", "explain this function", "how does this work", "what's
+    wrong with this code", "optimize this", "add tests for this", "refactor
+    this", "this file", "the current file", "this code", "the code I'm looking
+    at", "can you help me with this", "review this", or any reference to
+    current editor content.
+    """
     
     if not vim_state.is_connected():
         return {
