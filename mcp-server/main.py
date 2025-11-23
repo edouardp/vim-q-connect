@@ -672,7 +672,7 @@ def add_virtual_text(entries: list[dict]) -> str:
 
     Use optional emoji sparingly - only when it adds semantic meaning.
 
-    Common working emoji: 🤖🔥⭐💡✅❌⚠️📝🚀🎯🔧⚡🎉📊🔍💻📱🌟🎨🏆🔒🔑📈📉🎵
+    Common working emoji: 🤖🔥⭐💡✅❌⚠️📝🚀🎯🔧⚡🎉📊🔍💻📱🌟🎨🏆🔒🔑📈📉🎵⚡️
     """
     
     if not vim_state.is_connected():

@@ -11,7 +11,7 @@ vim-q-connect creates a bidirectional connection between Vim and Q CLI using the
 - **🔍 Context Awareness**: Q CLI automatically knows what code you're looking at—no need to copy-paste
 - **🎯 Smart Navigation**: Q can jump your cursor to specific lines and files
 - **💬 Inline Annotations**: Get code reviews, security findings, and suggestions displayed directly above relevant lines
-- **⚡ Real-time**: Updates happen instantly as you move through your code
+- **⚡️ Real-time**: Updates happen instantly as you move through your code
 - **🔗 Quickfix Integration**: Code analysis results automatically populate Vim's quickfix list with inline annotations
 
 ### Example Workflows
@@ -383,7 +383,7 @@ Q always knows:
 
 Annotations appear as virtual text above code lines with:
 
-- **Emoji indicators** for visual categorization (🔒 security, ⚡ performance, etc.)
+- **Emoji indicators** for visual categorization (🔒 security, ⚡️ performance, etc.)
 - **Multi-line support** for detailed explanations
 - **Syntax highlighting** with customizable colors
 - **Persistence** across buffer switches (until cleared)

@@ -303,7 +303,7 @@ function! s:DoAddVirtualText(line_num, text, highlight, emoji)
       try
         call prop_add(a:line_num, 0, {
           \ 'type': l:prop_type,
-          \ 'text': padded_text,
+          \ 'text': formatted_text,
           \ 'text_align': 'above'
         \ })
       catch
