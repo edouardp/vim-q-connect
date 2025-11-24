@@ -32,6 +32,7 @@ from both the vim-q-connect plugin and Q CLI MCP client.
 import sys
 import logging
 import signal
+from typing import Optional
 from fastmcp import FastMCP
 
 # Import modules
@@ -80,7 +81,7 @@ def get_editor_context_tool() -> dict:
 
 
 @mcp.tool()
-def goto_line_tool(line_number: int, filename: str = "") -> str:
+def goto_line_tool(line_number: int, filename: Optional[str] = None) -> str:
     """Navigate to a specific line in Vim."""
     return goto_line(vim_state, line_number, filename)
 
@@ -144,7 +145,7 @@ def get_annotations_above_current_position_tool() -> str:
 
 
 @mcp.tool()
-def clear_annotations_tool(filename: str = "") -> str:
+def clear_annotations_tool(filename: Optional[str] = None) -> str:
     """Clear all virtual text annotations from a specific file or current buffer in Vim."""
     return clear_annotations(vim_state, filename)
 
@@ -156,7 +157,7 @@ def highlight_text_tool(entries: list[dict]) -> str:
 
 
 @mcp.tool()
-def clear_highlights_tool(filename: str = "") -> str:
+def clear_highlights_tool(filename: Optional[str] = None) -> str:
     """Clear all text highlights from a specific file or current buffer in Vim."""
     return clear_highlights(vim_state, filename)
 
@@ -167,13 +168,13 @@ def clear_highlights_tool(filename: str = "") -> str:
 
 
 @mcp.prompt()
-def review(target: str = None):
+def review(target: Optional[str] = None):
     """Review the code for quality, security, and best practices"""
     return review_prompt(vim_state, target)
 
 
 @mcp.prompt()
-def explain(target: str = None):
+def explain(target: Optional[str] = None):
     """Explain what the current code does by adding detailed annotations
 
     Provides comprehensive explanations as inline annotations using add_virtual_text,
@@ -183,13 +184,13 @@ def explain(target: str = None):
 
 
 @mcp.prompt()
-def fix(target: str = None):
+def fix(target: Optional[str] = None):
     """Fix issues in code or the current quickfix issue"""
     return fix_prompt(vim_state, target)
 
 
 @mcp.prompt()
-def doc(target: str = None):
+def doc(target: Optional[str] = None):
     """Add documentation to the current code
 
     Adds appropriate documentation (docstrings, comments) to the code

@@ -5,12 +5,12 @@ MCP prompt implementations for code review, explanation, fixing, and documentati
 import uuid
 import queue
 import logging
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger("vim-context")
 
 
-def review_prompt(vim_state: Any, target: str = None) -> str:
+def review_prompt(vim_state: Any, target: Optional[str] = None) -> str:
     """Review the code for quality, security, and best practices"""
 
     try:
@@ -71,7 +71,7 @@ The user will navigate through issues using :cnext/:cprev in Vim and can use the
         return error_details
 
 
-def explain_prompt(vim_state: Any, target: str = None) -> str:
+def explain_prompt(vim_state: Any, target: Optional[str] = None) -> str:
     """Explain what the current code does by adding detailed annotations
 
     Provides comprehensive explanations as inline annotations using add_virtual_text,
@@ -146,7 +146,7 @@ Make the explanations comprehensive enough that a senior developer could underst
         return error_details
 
 
-def fix_prompt(vim_state: Any, target: str = None) -> str:
+def fix_prompt(vim_state: Any, target: Optional[str] = None) -> str:
     """Fix issues in code or the current quickfix issue"""
 
     if target is None:
@@ -266,7 +266,7 @@ Steps:
         return error_details
 
 
-def doc_prompt(vim_state: Any, target: str = None) -> str:
+def doc_prompt(vim_state: Any, target: Optional[str] = None) -> str:
     """Add documentation to the current code
 
     Adds appropriate documentation (docstrings, comments) to the code

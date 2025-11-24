@@ -6,7 +6,7 @@ import json
 import uuid
 import queue
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger("vim-context")
 
@@ -100,7 +100,7 @@ def get_annotations_above_current_position(vim_state: Any) -> str:
         return f"Error requesting annotations: {e}"
 
 
-def clear_annotations(vim_state: Any, filename: str = "") -> str:
+def clear_annotations(vim_state: Any, filename: Optional[str] = None) -> str:
     """Clear all virtual text annotations from a specific file or current buffer in Vim.
 
     Removes all inline annotations and virtual text that were previously added

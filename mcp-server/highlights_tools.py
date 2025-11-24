@@ -3,7 +3,7 @@ MCP tools for highlights in the editor.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger("vim-context")
 
@@ -77,7 +77,7 @@ def highlight_text(vim_state: Any, entries: list[Dict[str, Any]]) -> str:
         return f"Error sending highlight command: {e}"
 
 
-def clear_highlights(vim_state: Any, filename: str = "") -> str:
+def clear_highlights(vim_state: Any, filename: Optional[str] = None) -> str:
     """Clear all text highlights from a specific file or current buffer in Vim.
 
     Removes all background highlights that were previously added using highlight_text.

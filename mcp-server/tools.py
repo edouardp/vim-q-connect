@@ -59,7 +59,7 @@ def get_editor_context(vim_state: Any) -> Dict[str, Any]:
     }
 
 
-def goto_line(vim_state: Any, line_number: int, filename: str = "") -> str:
+def goto_line(vim_state: Any, line_number: int, filename: Optional[str] = None) -> str:
     """Navigate to a specific line in Vim.
 
     Args:
@@ -75,12 +75,16 @@ def goto_line(vim_state: Any, line_number: int, filename: str = "") -> str:
         return "Vim not connected to MCP socket"
 
     try:
+        params: Dict[str, Any] = {"line": line_number}
+        if filename is not None:
+            params["filename"] = filename
+
         vim_state.request_queue.put(
             (
                 "goto_line",
                 {
                     "method": "goto_line",
-                    "params": {"line": line_number, "filename": filename},
+                    "params": params,
                 },
             )
         )
