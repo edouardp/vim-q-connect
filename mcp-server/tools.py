@@ -60,7 +60,16 @@ def get_editor_context(vim_state: Any) -> Dict[str, Any]:
 
 
 def goto_line(vim_state: Any, line_number: int, filename: str = "") -> str:
-    """Navigate to a specific line in Vim."""
+    """Navigate to a specific line in Vim.
+
+    Args:
+        vim_state: Vim state object for communicating with the editor
+        line_number: Line number to navigate to
+        filename: Optional filename to navigate to (if not provided, navigates in current buffer)
+
+    Returns:
+        Confirmation message with navigation details, or error message if Vim is not connected
+    """
 
     if not vim_state.is_connected():
         return "Vim not connected to MCP socket"
