@@ -1,5 +1,8 @@
 " vim-q-connect.vim - Vim plugin for Q CLI context via MCP
 " Maintainer: Edouard Poor
+" 
+" This is the plugin initialization file. The actual functionality is implemented
+" in modular autoload files for better organization and maintainability.
 
 if exists('g:loaded_vim_q_connect')
   finish
@@ -9,7 +12,7 @@ let g:loaded_vim_q_connect = 1
 " Define highlight group for Q text
 highlight qtext ctermbg=237 ctermfg=250 cterm=italic guibg=#2a2a2a guifg=#d0d0d0 gui=italic
 
-" Define highlighter pen color s
+" Define highlighter pen colors
 highlight QHighlightYellow  ctermbg=227    ctermfg=black  guibg=#ffff00  cterm=bold  gui=bold
 highlight QHighlightOrange  ctermbg=208    ctermfg=black  guibg=#ff8c00  cterm=bold  gui=bold
 highlight QHighlightPink    ctermbg=213    ctermfg=black  guibg=#ff69b4  cterm=bold  gui=bold
@@ -24,14 +27,6 @@ highlight QHighlightVirtualPink    ctermbg=200  ctermfg=black  guibg=#ff1493  gu
 highlight QHighlightVirtualGreen   ctermbg=34   ctermfg=black  guibg=#7cb342  guifg=black  gui=bold
 highlight QHighlightVirtualBlue    ctermbg=74   ctermfg=black  guibg=#4a90e2  guifg=black  gui=bold
 highlight QHighlightVirtualPurple  ctermbg=129  ctermfg=black  guibg=#b366cc  guifg=black  gui=bold
-
-" Socket path will be determined at connection time if not set
-
-" Auto-annotate quickfix entries when opening files (disabled due to property type issues)
-" augroup QQuickfixAnnotate
-"   autocmd!
-"   autocmd BufEnter * if !empty(getqflist()) | call vim_q_connect#quickfix_annotate() | endif
-" augroup END
 
 " Commands
 command! -bang QConnect if <bang>0 | call vim_q_connect#stop_tracking() | else | call vim_q_connect#start_tracking() | endif
