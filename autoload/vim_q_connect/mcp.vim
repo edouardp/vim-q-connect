@@ -4,6 +4,45 @@
 " Script-local state for MCP connection
 let s:mcp_channel = v:null  " Vim channel handle for MCP socket connection
 
+" SECURITY: Sanitize filenames to prevent command injection
+" Validates and sanitizes filenames to prevent shell command execution
+function! s:sanitize_filename(filename)
+  " Reject empty filenames
+  if a:filename == ''
+    return ''
+  endif
+  
+  " Reject filenames starting with special characters that could be interpreted as commands
+  let first_char = a:filename[0]
+  if first_char == '!' || first_char == '|' || first_char == ':' || first_char == '%'
+    return ''
+  endif
+  
+  " Reject filenames containing shell metacharacters
+  if a:filename =~ '[;&$`\\]'
+    return ''
+  endif
+  
+  " Reject filenames with protocol schemes (could be URLs/commands)
+  if a:filename =~ '^https\?://' || a:filename =~ '^file://' || a:filename =~ '^scp://'
+    return ''
+  endif
+  
+  " Normalize path and resolve symlinks
+  let normalized = resolve(fnamemodify(a:filename, ':p'))
+  
+  " Ensure the path is under reasonable directory constraints
+  " (This is a basic check - could be made more restrictive based on use case)
+  if normalized =~ '^/'
+    " Absolute path - ensure it's not trying to escape to system directories
+    if normalized =~ '^/\.\./' || normalized =~ '^/etc/' || normalized =~ '^/proc/' || normalized =~ '^/sys/'
+      return ''
+    endif
+  endif
+  
+  return normalized
+endfunction
+
 " Get socket path, using hashed directory structure for long paths
 function! vim_q_connect#mcp#get_socket_path()
   let l:cwd_hash = sha256(getcwd())
@@ -98,7 +137,14 @@ function! vim_q_connect#mcp#do_goto_line(line_num, filename)
   
   " If filename specified, find window with that buffer
   if a:filename != ''
-    let target_bufnr = bufnr(a:filename)
+    " SECURITY: Validate filename to prevent command injection
+    let sanitized_filename = s:sanitize_filename(a:filename)
+    if sanitized_filename == ''
+      echohl ErrorMsg | echo 'Invalid filename specified' | echohl None
+      return
+    endif
+    
+    let target_bufnr = bufnr(sanitized_filename)
     if target_bufnr != -1
       " Check all tabs for this buffer
       for tabnr in range(1, tabpagenr('$'))
@@ -123,9 +169,9 @@ function! vim_q_connect#mcp#do_goto_line(line_num, filename)
       endif
     else
       if &modified
-        execute 'split | edit ' . fnameescape(a:filename)
+        execute 'split | edit ' . fnameescape(sanitized_filename)
       else
-        execute 'edit ' . fnameescape(a:filename)
+        execute 'edit ' . fnameescape(sanitized_filename)
       endif
     endif
   endif
