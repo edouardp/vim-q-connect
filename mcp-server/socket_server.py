@@ -142,40 +142,27 @@ def _listen_to_vim(conn: socket.socket, vim_state: Any) -> None:
                 buffer += data
                 logger.info(f"Received data from Vim: {data}")
 
-                # Handle complete messages
-                while buffer:
+                # Handle complete newline-delimited JSON messages
+                # Protocol: each message ends with \n
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    if not line.strip():
+                        # Skip empty lines
+                        continue
+
                     try:
-                        # Try to parse as complete JSON
-                        message = json.loads(buffer)
+                        message = json.loads(line.strip())
                         # Validate message structure before processing
                         if _validate_vim_message(message):
-                            handle_vim_message(json.dumps(message), vim_state)
+                            handle_vim_message(line.strip(), vim_state)
                         else:
                             logger.warning(
                                 f"Received invalid message structure: {message}"
                             )
-                        buffer = ""
-                        break
-                    except json.JSONDecodeError:
-                        # Look for newline-delimited messages
-                        if "\n" in buffer:
-                            line, buffer = buffer.split("\n", 1)
-                            if line.strip():
-                                try:
-                                    message = json.loads(line.strip())
-                                    # Validate message structure before processing
-                                    if _validate_vim_message(message):
-                                        handle_vim_message(line.strip(), vim_state)
-                                    else:
-                                        logger.warning(
-                                            f"Received invalid message structure: {message}"
-                                        )
-                                except json.JSONDecodeError as e:
-                                    logger.warning(
-                                        f"Failed to parse JSON line: {line.strip()}, error: {e}"
-                                    )
-                        else:
-                            break
+                    except json.JSONDecodeError as e:
+                        logger.warning(
+                            f"Failed to parse JSON line: {line.strip()}, error: {e}"
+                        )
             except socket.timeout:
                 pass  # Continue loop to check request queue
 
