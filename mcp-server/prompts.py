@@ -18,14 +18,14 @@ def review_prompt(vim_state: Any, target: Optional[str] = None) -> str:
 
         if vim_state.is_connected():
             context = vim_state.get_context()
-            prompt += f"Current context:\n"
+            prompt += "Current context:\n"
             prompt += f"File: {context['filename']}\n"
             prompt += f"Line: {context['line']}\n"
 
             if context.get("visual_start", 0) > 0:
                 prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n"
 
-        prompt += f"Please review the code for issues."
+        prompt += "Please review the code for issues."
         if target is not None:
             prompt += (
                 f"The user has specifically asked for this to be reviewed: {target}"
@@ -33,7 +33,7 @@ def review_prompt(vim_state: Any, target: Optional[str] = None) -> str:
         elif vim_state.is_connected():
             prompt += "Use the context above to determine what should be reviewed. If they have a current selection, that is the most important thing."
 
-        prompt += f"\n\nFor the code they have asked for a review for:"
+        prompt += "\n\nFor the code they have asked for a review for:"
 
         prompt += """
 1. Check for security vulnerabilities
@@ -61,13 +61,13 @@ The user will navigate through issues using :cnext/:cprev in Vim and can use the
     except Exception as e:
         import traceback
 
-        error_details = f"ERROR in review prompt:\n"
+        error_details = "ERROR in review prompt:\n"
         error_details += f"Exception type: {type(e).__name__}\n"
         error_details += f"Exception message: {str(e)}\n"
         error_details += f"Traceback:\n{traceback.format_exc()}\n"
         error_details += f"Function arguments: target={target}\n"
         if vim_state.is_connected():
-            error_details += f"Vim connected: True\n"
+            error_details += "Vim connected: True\n"
         return error_details
 
 
@@ -82,14 +82,14 @@ def explain_prompt(vim_state: Any, target: Optional[str] = None) -> str:
 
         if vim_state.is_connected():
             context = vim_state.get_context()
-            prompt += f"Current context (from get_editor_context tool, only call the tool if you require additional context):\n"
+            prompt += "Current context (from get_editor_context tool, only call the tool if you require additional context):\n"
             prompt += f"File: {context['filename']}\n"
             prompt += f"Line: {context['line']}\n"
 
             if context.get("visual_start", 0) > 0:
                 prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n\n"
 
-        prompt += f"Please explain the code by adding detailed annotations directly to the editor."
+        prompt += "Please explain the code by adding detailed annotations directly to the editor."
         if target is not None:
             prompt += f" The user has specifically asked about: {target}"
         elif vim_state.is_connected():
@@ -136,13 +136,13 @@ Make the explanations comprehensive enough that a senior developer could underst
     except Exception as e:
         import traceback
 
-        error_details = f"ERROR in explain prompt:\n"
+        error_details = "ERROR in explain prompt:\n"
         error_details += f"Exception type: {type(e).__name__}\n"
         error_details += f"Exception message: {str(e)}\n"
         error_details += f"Traceback:\n{traceback.format_exc()}\n"
         error_details += f"Function arguments: target={target}\n"
         if vim_state.is_connected():
-            error_details += f"Vim connected: True\n"
+            error_details += "Vim connected: True\n"
         return error_details
 
 
@@ -198,9 +198,8 @@ Make sure the fix:
 - Is minimal and focused"""
                 finally:
                     # Clean up response queue
-                    if request_id in vim_state.response_queues:
-                        del vim_state.response_queues[request_id]
-            except:
+                    vim_state.response_queues.pop(request_id, None)
+            except Exception:
                 pass  # Fall through to editor context
 
         # No quickfix entry or error - use current editor context
@@ -223,14 +222,14 @@ Make sure the fix:
 
         if vim_state.is_connected():
             context = vim_state.get_context()
-            prompt += f"Current context (from get_editor_context tool, only call the tool if you require additional context):\n"
+            prompt += "Current context (from get_editor_context tool, only call the tool if you require additional context):\n"
             prompt += f"File: {context['filename']}\n"
             prompt += f"Line: {context['line']}\n"
 
             if context.get("visual_start", 0) > 0:
                 prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n\n"
 
-        prompt += f"Please fix the code."
+        prompt += "Please fix the code."
         if target is not None:
             prompt += f" The user has specifically asked: {target}"
         elif vim_state.is_connected():
@@ -259,7 +258,7 @@ Steps:
     except Exception as e:
         import traceback
 
-        error_details = f"ERROR in fix prompt:\n"
+        error_details = "ERROR in fix prompt:\n"
         error_details += f"Exception type: {type(e).__name__}\n"
         error_details += f"Exception message: {str(e)}\n"
         error_details += f"Traceback:\n{traceback.format_exc()}\n"
@@ -276,14 +275,14 @@ def doc_prompt(vim_state: Any, target: Optional[str] = None) -> str:
 
         if vim_state.is_connected():
             context = vim_state.get_context()
-            prompt += f"Current context:\n"
+            prompt += "Current context:\n"
             prompt += f"File: {context['filename']}\n"
             prompt += f"Line: {context['line']}\n"
 
             if context.get("visual_start", 0) > 0:
                 prompt += f"Selection: lines {context['visual_start']}-{context['visual_end']}\n"
 
-        prompt += f"Please add documentation to the code."
+        prompt += "Please add documentation to the code."
         if target is not None:
             prompt += f" The user has specifically asked to document: {target}"
         elif vim_state.is_connected():
@@ -311,11 +310,11 @@ will assist with that, read and understand them as well.
     except Exception as e:
         import traceback
 
-        error_details = f"ERROR in doc prompt:\n"
+        error_details = "ERROR in doc prompt:\n"
         error_details += f"Exception type: {type(e).__name__}\n"
         error_details += f"Exception message: {str(e)}\n"
         error_details += f"Traceback:\n{traceback.format_exc()}\n"
         error_details += f"Function arguments: target={target}\n"
         if vim_state.is_connected():
-            error_details += f"Vim connected: True\n"
+            error_details += "Vim connected: True\n"
         return error_details

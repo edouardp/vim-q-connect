@@ -2,11 +2,10 @@
 MCP tools for editor context and navigation.
 """
 
-import json
-import uuid
-import queue
 import logging
-from typing import Dict, Any, Optional
+import queue
+import uuid
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("vim-context")
 
