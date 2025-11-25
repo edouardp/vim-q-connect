@@ -176,7 +176,7 @@ function! vim_q_connect#mcp#do_goto_line(line_num, filename)
     endif
   endif
   
-  execute a:line_num
+  call cursor(a:line_num, 1)
   normal! zz
 endfunction
 
