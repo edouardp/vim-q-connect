@@ -3,10 +3,10 @@ MCP tools for annotations and highlights in the editor.
 """
 
 import json
-import uuid
-import queue
 import logging
-from typing import Dict, Any, Optional
+import queue
+import uuid
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("vim-context")
 
@@ -48,7 +48,7 @@ def add_virtual_text(vim_state: Any, entries: list[Dict[str, Any]]) -> str:
             )
         )
 
-        logger.info(f"Successfully queued batch virtual text command")
+        logger.info("Successfully queued batch virtual text command")
         return f"Batch virtual text added: {len(entries)} entries"
     except Exception as e:
         logger.error(f"Error sending batch virtual text command: {e}")

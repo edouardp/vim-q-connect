@@ -174,9 +174,10 @@ Q CLI                MCP Server              Vim Plugin
 
 ### Protocol Details
 
-- **Transport**: Unix domain socket at `.vim-q-mcp.sock`
+- **Transport**: Unix domain socket at `/tmp/vim-q-connect/{SHA256}/sock`
 - **Format**: JSON-RPC over newline-delimited messages
-- **Encoding**: UTF-8 with error replacement
+- **Encoding**: Strict UTF-8 validation (rejects malformed sequences)
+- **Buffer Size**: 65536 bytes with proper message accumulation
 
 **Message Structure**:
 
@@ -188,9 +189,80 @@ Q CLI                MCP Server              Vim Plugin
 }
 ```
 
+**Security Features**:
+- Strict UTF-8 validation prevents injection via malformed encoding
+- Message structure validation ensures type safety
+- Filename sanitization prevents command injection
+- Newline-delimited protocol handles messages of any size
+
+**Message Handling**:
+- Messages are accumulated in a buffer until a complete newline-terminated message is received
+- Handles fragmented messages that exceed the 65536-byte read buffer
+- Empty lines are skipped gracefully
+- Each complete message is validated before processing
+
 ---
 
 ## MCP Server Implementation
+
+### Modular Architecture
+
+The MCP server has been refactored from a monolithic 1012-line file into 9 focused modules for improved maintainability and testability:
+
+**Core Modules**:
+- **config.py** (607 bytes): Logging configuration and setup
+- **vim_state.py** (2.2 KB): Thread-safe state management for Vim connection
+- **message_handler.py** (4.5 KB): Processes incoming messages from vim-q-connect plugin
+- **socket_server.py** (5.7 KB): Unix domain socket communication with Vim
+
+**Tool Modules**:
+- **tools.py** (7.5 KB): Core editor and quickfix tools
+- **annotations_tools.py** (5.6 KB): Virtual text annotation tools
+- **highlights_tools.py** (4.0 KB): Text highlighting tools
+
+**Prompt Modules**:
+- **prompts.py** (12.8 KB): MCP prompt implementations for AI-assisted code analysis
+
+**Entry Point**:
+- **main.py** (8.2 KB): Orchestration and FastMCP integration
+
+This modular design provides:
+- Clear separation of concerns
+- Independent testability of components
+- Easier maintenance and feature additions
+- Better code organization and readability
+
+### Security Enhancements
+
+Multiple security improvements protect against injection attacks:
+
+1. **Filename Sanitization** (Nov 25, 2025):
+   - Added `sanitize_filename()` function in `mcp.vim`
+   - Rejects filenames with shell metacharacters (`!`, `|`, `;`, `&`, etc.)
+   - Prevents protocol schemes (`file://`, `http://`, etc.)
+   - Validates against system directories
+   - Fixes critical command injection vulnerability in `goto_line` operations
+
+2. **Strict UTF-8 Validation** (Nov 25, 2025):
+   - Replaced lenient UTF-8 decoding (`errors='replace'`) with strict validation
+   - Rejects malformed UTF-8 sequences that could bypass security checks
+   - Added comprehensive message structure validation
+   - Validates message types before processing
+
+3. **Message Structure Validation**:
+   - Ensures message root is a dictionary
+   - Validates required `method` field is a string
+   - Validates optional `params` field is a dictionary
+   - Validates optional `request_id` field is a string
+   - Prevents injection via malformed message structures
+
+### Protocol Improvements
+
+**Newline-Delimited JSON** (Nov 25, 2025):
+- Fixed handling of large messages that exceed the 65536-byte read buffer
+- Properly accumulates partial messages until newline terminator is found
+- Handles messages of any size by waiting for complete transmission
+- Prevents parsing errors from fragmented messages
 
 ### Threading Model
 
@@ -406,44 +478,112 @@ def get_annotations_above_current_position() -> str:
 
 ## Vim Plugin Implementation
 
+### Modular Architecture
+
+The Vim plugin has been refactored from a monolithic 1,454-line file into 6 focused modules for improved maintainability:
+
+**Plugin Structure**:
+```
+plugin/vim-q-connect.vim                    # Entry point (55 lines)
+autoload/vim_q_connect.vim                  # Public API facade (55 lines)
+autoload/vim_q_connect/
+├── virtual_text.vim                        # Virtual text annotations (307 lines)
+├── highlights.vim                          # Text highlighting (276 lines)
+├── quickfix.vim                            # Quickfix management (330 lines)
+├── mcp.vim                                 # MCP connection (312 lines)
+└── context.vim                             # Context tracking (194 lines)
+```
+
+**Module Responsibilities**:
+
+1. **virtual_text.vim**: Manages inline annotations above code lines
+   - Emoji extraction and formatting
+   - Batch annotation processing
+   - Line matching and duplicate detection
+
+2. **highlights.vim**: Manages background highlighting with hover text
+   - Multi-line and single-line highlighting
+   - Color-matched virtual text display
+   - Cursor-aware hover text
+
+3. **quickfix.vim**: Manages quickfix list and auto-annotation
+   - Entry resolution with line matching
+   - Auto-annotation mode
+   - Pattern refresh on file changes
+
+4. **mcp.vim**: Handles MCP server connection and message routing
+   - Unix socket communication
+   - Message routing to handlers
+   - Filename sanitization for security
+
+5. **context.vim**: Tracks editor state and broadcasts updates
+   - Cursor position tracking
+   - Visual selection detection
+   - Context update broadcasting
+
+6. **vim_q_connect.vim**: Public API facade
+   - Delegates to specialized modules
+   - Maintains backward compatibility
+
+This modular design provides:
+- 96% reduction in main API file size (1,454 → 55 lines)
+- Clear separation of concerns
+- Independent testability
+- Easier maintenance and feature additions
+
+### Security Enhancements
+
+**Filename Sanitization** (Nov 25, 2025):
+- Added `s:sanitize_filename()` function in `mcp.vim`
+- Prevents command injection in `do_goto_line()` operations
+- Rejects shell metacharacters and protocol schemes
+- Validates paths against system directories
+- Uses `cursor()` instead of `execute` to prevent arbitrary command execution
+
 ### Plugin Structure
-
-```
-plugin/vim-q-connect.vim          # Entry point, commands, highlights
-autoload/vim_q_connect.vim        # Implementation (lazy-loaded)
-```
-
-**Design Decision**: Autoload pattern
-
-- `plugin/` loads immediately on Vim startup
-- `autoload/` loads only when functions are called
-- Reduces Vim startup time
 
 ### Commands
 
 ```vim
-:QConnect       " Start tracking and connect to MCP server
-:QConnect!      " Stop tracking and disconnect
-:QVirtualTextClear  " Clear all annotations from current buffer
-:QQuickfixAnnotate  " Manually annotate quickfix entries
+:QConnect                  " Start tracking and connect to MCP server
+:QConnect!                 " Stop tracking and disconnect
+:QVirtualTextClear         " Clear all annotations from current buffer
+:QHighlightsClear          " Clear all highlights from current buffer
+:QQuickfixAnnotate         " Manually annotate quickfix entries
+:QQuickfixAutoAnnotate     " Enable auto-annotation mode
+:QQuickfixAutoAnnotate!    " Disable auto-annotation mode
+:QQuickfixClear            " Clear all quickfix entries
 ```
 
-### Global State Variables
+### State Management
 
+State is managed within module-scoped script-local variables:
+
+**context.vim**:
 ```vim
-let g:context_active = 0           " Tracking enabled flag
-let g:mcp_channel = v:null         " Vim channel handle
-let g:current_filename = ''        " Tracked filename
-let g:current_line = 0             " Tracked line number
-let g:visual_start = 0             " Visual selection start (0 = none)
-let g:visual_end = 0               " Visual selection end (0 = none)
+let s:context_active = 0           " Tracking enabled flag
+let s:current_filename = ''        " Tracked filename
+let s:current_line = 0             " Tracked line number
+let s:visual_start = 0             " Visual selection start (0 = none)
+let s:visual_end = 0               " Visual selection end (0 = none)
+let s:visual_start_col = 0         " Visual selection start column
+let s:visual_end_col = 0           " Visual selection end column
 ```
 
-**Design Decision**: Global variables without namespace prefix
+**mcp.vim**:
+```vim
+let s:mcp_channel = v:null         " Vim channel handle
+```
 
-- Simpler code
-- Risk of conflicts with other plugins
-- **TODO**: Should be prefixed with `g:vim_q_connect_*`
+**quickfix.vim**:
+```vim
+let s:auto_annotate_enabled = 0    " Auto-annotation toggle
+```
+
+**Design Decision**: Script-local variables with module scope
+- Proper encapsulation within modules
+- No namespace conflicts between modules
+- Clear ownership of state
 
 ### Connection Lifecycle
 

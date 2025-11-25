@@ -30,7 +30,6 @@ from both the vim-q-connect plugin and Q CLI MCP client.
 """
 
 import sys
-import logging
 import signal
 from typing import Optional
 from fastmcp import FastMCP

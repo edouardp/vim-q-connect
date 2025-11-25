@@ -541,13 +541,28 @@ logging.basicConfig(level=logging.DEBUG)
 
 ## Technical Details
 
-For developers interested in how vim-q-connect works internally, see [DESIGN_DECISIONS.md](DESIGN_DECISIONS.md) for:
+For developers interested in how vim-q-connect works internally, see the following documentation:
 
-- Architecture and communication protocols
-- Threading model and state management
-- Annotation system implementation
-- Quickfix integration details
-- Performance considerations
+- **[DESIGN_DECISIONS.md](DESIGN_DECISIONS.md)**: Architecture, communication protocols, and implementation details
+- **[VIMSCRIPT_REFACTORING.md](VIMSCRIPT_REFACTORING.md)**: Modular Vimscript architecture (5 focused modules)
+- **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)**: Python MCP server modular architecture (9 focused modules)
+
+### Architecture Highlights
+
+**Modular Design**: The codebase has been refactored into focused, maintainable modules:
+- **Vimscript**: 5 specialized modules (virtual_text, highlights, quickfix, mcp, context)
+- **Python MCP Server**: 9 focused modules (config, vim_state, message_handler, socket_server, tools, annotations_tools, highlights_tools, prompts, main)
+
+**Security**: Multiple security enhancements protect against injection attacks:
+- Filename sanitization prevents command injection in goto_line operations
+- Strict UTF-8 validation rejects malformed input
+- Comprehensive message structure validation
+- Safe parameter handling throughout
+
+**Reliability**: Robust message handling ensures stable operation:
+- Newline-delimited JSON protocol handles messages of any size
+- Thread-safe state management with proper locking
+- Graceful error handling and recovery
 
 ## Contributing
 
