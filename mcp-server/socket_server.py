@@ -18,6 +18,49 @@ from message_handler import handle_vim_message
 logger = logging.getLogger("vim-context")
 
 
+def _validate_vim_message(data: Any) -> bool:
+    """
+    Validate incoming message structure from Vim.
+
+    Expected structure:
+    {
+        "method": str,
+        "params": dict (optional),
+        "request_id": str (optional)
+    }
+
+    Args:
+        data: Parsed JSON data to validate
+
+    Returns:
+        True if message is valid, False otherwise
+    """
+    # Must be a dictionary
+    if not isinstance(data, dict):
+        logger.warning(f"Message is not a dict: {type(data)}")
+        return False
+
+    # Must have a 'method' field that is a string
+    method = data.get("method")
+    if not isinstance(method, str):
+        logger.warning(f"Message has invalid or missing method field: {method}")
+        return False
+
+    # If 'params' exists, it must be a dict
+    if "params" in data and not isinstance(data["params"], dict):
+        logger.warning(f"Message params is not a dict: {type(data.get('params'))}")
+        return False
+
+    # If 'request_id' exists, it must be a string
+    if "request_id" in data and not isinstance(data["request_id"], str):
+        logger.warning(
+            f"Message request_id is not a string: {type(data.get('request_id'))}"
+        )
+        return False
+
+    return True
+
+
 def get_socket_path() -> str:
     """Get socket path, using hashed directory structure for long paths."""
     cwd_hash = hashlib.sha256(
@@ -75,7 +118,7 @@ def _listen_to_vim(conn: socket.socket, vim_state: Any) -> None:
             try:
                 request_type, request_data = vim_state.request_queue.get_nowait()
                 message = json.dumps(request_data) + "\n"
-                conn.send(message.encode())
+                conn.send(message.encode("utf-8"))
                 logger.info(f"Sent {request_type} request to Vim")
             except queue.Empty:
                 pass
@@ -83,11 +126,18 @@ def _listen_to_vim(conn: socket.socket, vim_state: Any) -> None:
             # Then check for incoming data
             conn.settimeout(0.1)  # Non-blocking with short timeout
             try:
-                data = conn.recv(65536).decode("utf-8", errors="replace")
-                if not data:
+                raw_data = conn.recv(65536)
+                if not raw_data:
                     vim_state.set_connected(False)
                     logger.info("Vim disconnected from MCP socket")
                     break
+
+                # Strict UTF-8 decoding - reject malformed sequences
+                try:
+                    data = raw_data.decode("utf-8")
+                except UnicodeDecodeError as e:
+                    logger.error(f"Received malformed UTF-8 data, rejecting: {e}")
+                    continue
 
                 buffer += data
                 logger.info(f"Received data from Vim: {data}")
@@ -97,7 +147,13 @@ def _listen_to_vim(conn: socket.socket, vim_state: Any) -> None:
                     try:
                         # Try to parse as complete JSON
                         message = json.loads(buffer)
-                        handle_vim_message(json.dumps(message), vim_state)
+                        # Validate message structure before processing
+                        if _validate_vim_message(message):
+                            handle_vim_message(json.dumps(message), vim_state)
+                        else:
+                            logger.warning(
+                                f"Received invalid message structure: {message}"
+                            )
                         buffer = ""
                         break
                     except json.JSONDecodeError:
@@ -105,7 +161,19 @@ def _listen_to_vim(conn: socket.socket, vim_state: Any) -> None:
                         if "\n" in buffer:
                             line, buffer = buffer.split("\n", 1)
                             if line.strip():
-                                handle_vim_message(line.strip(), vim_state)
+                                try:
+                                    message = json.loads(line.strip())
+                                    # Validate message structure before processing
+                                    if _validate_vim_message(message):
+                                        handle_vim_message(line.strip(), vim_state)
+                                    else:
+                                        logger.warning(
+                                            f"Received invalid message structure: {message}"
+                                        )
+                                except json.JSONDecodeError as e:
+                                    logger.warning(
+                                        f"Failed to parse JSON line: {line.strip()}, error: {e}"
+                                    )
                         else:
                             break
             except socket.timeout:
